@@ -2,11 +2,6 @@
     ViewData["Title"] = "Home Page";
 }
 
-@*<div class="text-center">
-        <h1 class="display-4">Welcome</h1>
-        <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-    </div>*@
-
 <style>
     .rightside {
         float: left;
@@ -22,7 +17,7 @@
         position: relative; /* Necessary for correct mouse co-ords in Firefox */
     }
 
-    #clear_button, #save_button {
+    input[type="button"] {
         float: left;
         font-size: 15px;
         padding: 10px;
@@ -30,12 +25,17 @@
         background: #feee;
         border: 1px solid #888;
         margin-bottom: 5px;
+        margin-right: 5px;
     }
 </style>
 <h1>SignalR Sketchpad</h1>
 <div id="sketchpadapp">
     <div class="rightside">
-        <button id="clear_button" onclick="tellServerToClear()">Clear Canvas</button>
+        <input type="button" onclick="onStartDrawing()" value="Start drawing" />
+        <input type="button" onclick="onStopDrawing()" value="Stop drawing" />
+        <input type="file" id="attachment" style="display: none;" onchange="fileSelected(this)" accept="image/*" />
+        <input type="button" id="fileImport" onclick="importFile()" value="Import file" />
+        <input type="button" id="clear_button" onclick="tellServerToClear()" value="Clear Canvas" />
         <br />
         <br />
         <canvas id="canvas" width="600" height="300"></canvas>

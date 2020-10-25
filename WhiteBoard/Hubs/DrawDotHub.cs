@@ -10,5 +10,10 @@ namespace WhiteBoard.Hubs
         {
             await Clients.All.SendAsync("clearCanvas");
         }
+
+        public async Task AddObject(string jsonData)
+        {
+            await Clients.Others.SendAsync("addObject", jsonData);
+        }
     }
 }
