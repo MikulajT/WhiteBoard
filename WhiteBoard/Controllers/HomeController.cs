@@ -11,11 +11,10 @@ namespace WhiteBoard.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
-
-        public HomeController(ILogger<HomeController> logger)
+        BoardService boardService;
+        public HomeController(BoardService boardService)
         {
-            _logger = logger;
+            this.boardService = boardService;
         }
 
         public IActionResult Index()

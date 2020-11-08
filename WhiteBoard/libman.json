@@ -17,6 +17,9 @@
         "package.json",
         "index.js"
       ]
+    },
+    {
+      "library": "jquery@3.5.1"
     }
   ]
 }

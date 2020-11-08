@@ -26,6 +26,7 @@ namespace WhiteBoard
         {
             services.AddControllersWithViews();
             services.AddSignalR();
+            services.AddScoped<WhiteBoard.Models.BoardService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -51,7 +52,7 @@ namespace WhiteBoard
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
-                    name: "default",
+                    name: "defaul",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapHub<DrawDotHub>("/drawDotHub");
             });
