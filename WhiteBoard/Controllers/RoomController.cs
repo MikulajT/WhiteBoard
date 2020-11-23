@@ -9,21 +9,14 @@ using WhiteBoard.Models;
 
 namespace WhiteBoard.Controllers
 {
-    public class HomeController : Controller
+    public class RoomController : Controller
     {
-        RoomService boardService;
-        public HomeController(RoomService boardService)
+        public RoomController()
         {
-            this.boardService = boardService;
         }
 
-        public IActionResult Index()
-        {
-            ViewBag.roomId = boardService.GenerateRoomId();
-            return View();
-        }
-
-        public IActionResult Privacy()
+        [Route("Board/{roomId}")]
+        public IActionResult Board(string roomId)
         {
             return View();
         }

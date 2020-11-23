@@ -7,15 +7,17 @@ using System.Threading.Tasks;
 
 namespace WhiteBoard.Models
 {
-    public class BoardService
+    public class RoomService
     {
         private const int BYTE_LENGTH = 16;
+
+        RoomModel room = new RoomModel();
 
         /// <summary>
         /// Generate a fixed length token that can be used in url without endcoding it
         /// </summary>
         /// <returns></returns>
-        public string GenerateToken()
+        public string GenerateRoomId()
         {
             // get secure array bytes
             byte[] secureArray = GenerateRandomBytes();
@@ -23,7 +25,9 @@ namespace WhiteBoard.Models
             // convert in an url safe string
             string urlToken = WebEncoders.Base64UrlEncode(secureArray);
 
-            return urlToken;
+            room.Id = urlToken;
+
+            return room.Id;
         }
 
         /// <summary>
@@ -39,6 +43,15 @@ namespace WhiteBoard.Models
 
                 return byteArray;
             }
+        }
+
+        /// <summary>
+        /// Získá id roomky
+        /// </summary>
+        /// <returns></returns>
+        private string GetRoomId()
+        {
+            return room.Id;
         }
     }
 }

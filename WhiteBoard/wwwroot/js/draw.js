@@ -1,10 +1,13 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
 let objectId = 1;
+let groupName;
 
 /**
  * Vytvoření spojení se serverem
  * */
 connection.start().then(function () {
+    groupName = getGroupName();
+    connection.invoke("AddUserToGroup", groupName)
 }).catch(function (err) {
     return console.error(err.toString());
 });
@@ -28,6 +31,16 @@ let onStartDrawing = function () {
  * */
 let onStopDrawing = function () {
     canvas.isDrawingMode = false;
+}
+
+/**
+ * Z URL získá skupinu
+ * */
+function getGroupName() {
+    let segmentStr = window.location.pathname;
+    let segmentArray = segmentStr.split('/');
+    let groupName = segmentArray.pop();
+    return groupName;
 }
 
 /**
@@ -88,7 +101,7 @@ connection.on("deleteObjects", function (objectIds) {
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  * */
 function tellServerToClear() {
-    connection.invoke("ClearCanvas").catch(function (err) {
+    connection.invoke("ClearCanvas", groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }
@@ -99,7 +112,7 @@ function tellServerToClear() {
 canvas.on('path:created', function (e) {
     e.path.id = objectId++;
     objWithId = e.path.toJSON(['id']);
-    connection.invoke("AddObject", JSON.stringify(objWithId)).catch(function (err) {
+    connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });
@@ -112,7 +125,7 @@ $('html').keyup(function (e) {
         let activeObject = canvas.getActiveObject();
         let activeGroup = canvas.getActiveGroup();
         if (activeObject) {
-            connection.invoke("DeleteObjects", [activeObject.id]).catch(function (err) {
+            connection.invoke("DeleteObjects", [activeObject.id], groupName).catch(function (err) {
                 return console.error(err.toString());
             });
             canvas.remove(activeObject);
@@ -121,7 +134,7 @@ $('html').keyup(function (e) {
             let objectsInGroup = activeGroup.getObjects();
             let objectsIds = [];
             objectsInGroup.forEach(element => objectsIds.push(element.id));
-            connection.invoke("DeleteObjects", objectsIds).catch(function (err) {
+            connection.invoke("DeleteObjects", objectsIds, groupName).catch(function (err) {
                 return console.error(err.toString());
             });
             canvas.discardActiveGroup();

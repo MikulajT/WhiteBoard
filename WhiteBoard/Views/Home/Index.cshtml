@@ -2,47 +2,9 @@
     ViewData["Title"] = "Home Page";
 }
 
-<style>
-    .rightside {
-        float: left;
-        margin-left: 10px;
-    }
+@model RoomModel
 
-    #canvas {
-        float: left;
-        height: 300px;
-        width: 600px;
-        border: 2px solid #888;
-        border-radius: 4px;
-        position: relative; /* Necessary for correct mouse co-ords in Firefox */
-    }
+<h1>Home page</h1>
 
-    input[type="button"] {
-        float: left;
-        font-size: 15px;
-        padding: 10px;
-        -webkit-appearance: none;
-        background: #feee;
-        border: 1px solid #888;
-        margin-bottom: 5px;
-        margin-right: 5px;
-    }
-</style>
-<h1>SignalR Sketchpad</h1>
-<div id="sketchpadapp">
-    <div class="rightside">
-        <input type="button" onclick="onStartDrawing()" value="Start drawing" />
-        <input type="button" onclick="onStopDrawing()" value="Stop drawing" />
-        <input type="file" id="attachment" style="display: none;" onchange="fileSelected(this)" accept="image/*" />
-        <input type="button" id="fileImport" onclick="importFile()" value="Import file" />
-        <input type="button" id="clear_button" onclick="tellServerToClear()" value="Clear Canvas" />
-        <br />
-        <br />
-        <canvas id="canvas" width="600" height="300"></canvas>
-    </div>
-</div>
+<a href="@Url.Action("Board", "Room", new { roomId = ViewBag.roomId })">Create shared board</a>
 
-<script src="~/lib/signalr/dist/browser/signalr.js"></script>
-<script src="~/lib/fabricjs/index.js"></script>
-<script src="~/lib/jquery/dist/jquery.js"></script>
-<script src="~/js/draw.js"></script>
