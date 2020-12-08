@@ -1,6 +1,7 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
 let objectId = 1;
 let groupName;
+let textMode = false;
 
 /**
  * Vytvoření spojení se serverem
@@ -64,6 +65,44 @@ function fileSelected(input) {
     };
     reader.readAsDataURL(file);
 }
+
+/**
+ * Vložení textu
+ * */
+function changetextMode() {
+
+    if (!textMode) {
+        canvas.defaultCursor = 'text';
+        canvas.isDrawingMode = false;
+        document.getElementById("text_button").style.backgroundColor = '#a2ffa2';
+        textMode = true;
+    }
+    else {
+        canvas.defaultCursor = 'arrow';
+        document.getElementById("text_button").style.backgroundColor = '#feee';
+        textMode = false;
+    }
+}
+
+canvas.on('mouse:down', function (event) {
+    if (textMode) {
+        var pointer = canvas.getPointer(event.e);
+
+        var iText = new fabric.IText('', {
+            left: pointer.x,
+            top: pointer.y,
+            fontFamily: 'Helvetica',
+            fill: '#333',
+            lineHeight: 1.1
+        }
+        );
+
+        canvas.add(iText);
+        canvas.setActiveObject(iText);
+        iText.enterEditing();
+        iText.hiddenTextarea.focus();
+    }
+});
 
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
