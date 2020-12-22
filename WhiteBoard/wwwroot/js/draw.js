@@ -17,7 +17,7 @@ connection.start().then(function () {
  * Vytvoření canvasu
  * */
 let canvas = new fabric.Canvas('canvas', {
-    isDrawingMode: true
+    isDrawingMode: false
 });
 
 /**
@@ -72,13 +72,12 @@ function fileSelected(input) {
 function changetextMode() {
 
     if (!textMode) {
-        canvas.defaultCursor = 'text';
-        canvas.isDrawingMode = false;
+        //canvas.defaultCursor = 'text';
         document.getElementById("text_button").style.backgroundColor = '#a2ffa2';
         textMode = true;
     }
     else {
-        canvas.defaultCursor = 'arrow';
+        canvas.defaultCursor = 'default';
         document.getElementById("text_button").style.backgroundColor = '#feee';
         textMode = false;
     }
@@ -87,7 +86,6 @@ function changetextMode() {
 canvas.on('mouse:down', function (event) {
     if (textMode) {
         var pointer = canvas.getPointer(event.e);
-
         var iText = new fabric.IText('', {
             left: pointer.x,
             top: pointer.y,
@@ -96,7 +94,6 @@ canvas.on('mouse:down', function (event) {
             lineHeight: 1.1
         }
         );
-
         canvas.add(iText);
         canvas.setActiveObject(iText);
         iText.enterEditing();
@@ -115,13 +112,12 @@ connection.on("clearCanvas", function () {
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
  * */
 connection.on("addObject", function (jsonData) {
-    // Parse JSON and single object to canvas
     var jsonObj = JSON.parse(jsonData);
     fabric.util.enlivenObjects([jsonObj], function (enlivenedObjects) {
         canvas.add(enlivenedObjects[0]);
         canvas.renderAll();
     });
-    console.log(canvas._objects)
+    objectId++;
 });
 
 /**
@@ -137,9 +133,22 @@ connection.on("deleteObjects", function (objectIds) {
 });
 
 /**
+ * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
+ * */
+connection.on("changeTextObject", function (objectId, addedChar) {
+    updatedTextObj = canvas.getObjects().find(obj => {
+        return obj.id === objectId
+    })
+    updatedTextObj.text += addedChar;
+    canvas.renderAll();
+    updatedTextObj.setCoords();
+});
+
+/**
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  * */
 function tellServerToClear() {
+    canvas.clear();
     connection.invoke("ClearCanvas", groupName).catch(function (err) {
         return console.error(err.toString());
     });
@@ -154,6 +163,28 @@ canvas.on('path:created', function (e) {
     connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
         return console.error(err.toString());
     });
+});
+
+/**
+ * Event - Změna vkládaného textu
+ * */
+canvas.on('text:changed', function (e) {
+    if (e.target.id == null) {
+        e.target.id = objectId++;
+        objWithId = e.target.toJSON(['id']);
+        connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+    else {
+        var updatedTextObj = canvas.getObjects().find(obj => {
+            return obj.id === e.target.id
+        })
+        let addedChar = updatedTextObj.text.slice(-1);
+        connection.invoke("ChangeTextObject", e.target.id, addedChar, groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
 });
 
 /**
