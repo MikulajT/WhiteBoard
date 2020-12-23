@@ -97,7 +97,6 @@ canvas.on('mouse:down', function (event) {
         canvas.add(iText);
         canvas.setActiveObject(iText);
         iText.enterEditing();
-        iText.hiddenTextarea.focus();
     }
 });
 
