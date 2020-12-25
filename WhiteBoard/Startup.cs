@@ -54,7 +54,7 @@ namespace WhiteBoard
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
-                endpoints.MapHub<DrawDotHub>("/drawDotHub");
+                endpoints.MapHub<BoardHub>("/drawDotHub");
             });
         }
     }

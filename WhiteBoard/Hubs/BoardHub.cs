@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace WhiteBoard.Hubs
 {
-    public class DrawDotHub : Hub
+    public class BoardHub : Hub
     {
 
         /// <summary>
@@ -42,11 +42,27 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Změní text již existujícího objektu
+        /// Příkaz ke změně textu již existujícího objektu
         /// </summary>
         public async Task ChangeTextObject(int objectId, string addedChar, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeTextObject", objectId, addedChar);
+        }
+
+        /// <summary>
+        /// Příkaz ke změně pozice objektu
+        /// </summary>
+        public async Task ChangeObjectPosition(int objectId, double xPos, double yPos, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", objectId, xPos, yPos);
+        }
+
+        /// <summary>
+        /// Příkaz k otočení objektu
+        /// </summary>
+        public async Task ChangeObjectAngle(int objectId, double angle, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", objectId, angle);
         }
     }
 }

@@ -101,6 +101,31 @@ canvas.on('mouse:down', function (event) {
 });
 
 /**
+ * Stažení tabule ve formátu JSON
+ * */
+function downloadJSONBoard() {
+    let serializedCanvas = JSON.stringify(canvas);
+    serializedCanvas = [serializedCanvas];
+    let blob = new Blob(serializedCanvas, { type: "text/plain;charset=utf-8" });
+
+    //Check the Browser.
+    let isIE = false || !!document.documentMode;
+    if (isIE) {
+        window.navigator.msSaveBlob(blob, "Customers.txt");
+    } else {
+        let url = window.URL || window.webkitURL;
+        link = url.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.download = "Board.json";
+        a.href = link;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
+
+
+/**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
  * */
 connection.on("clearCanvas", function () {
@@ -144,6 +169,31 @@ connection.on("changeTextObject", function (objectId, addedChar) {
 });
 
 /**
+ * Příkaz ze serveru ke změně pozice objektu
+ * */
+connection.on("changeObjectPosition", function (objectId, xPos, yPos) {
+    movedObj = canvas.getObjects().find(obj => {
+        return obj.id === objectId
+    })
+    movedObj.top = yPos;
+    movedObj.left = xPos;
+    canvas.renderAll();
+    movedObj.setCoords();
+});
+
+/**
+ * Příkaz ze serveru ke změně pozice objektu
+ * */
+connection.on("changeObjectAngle", function (objectId, angle) {
+    rotatedObj = canvas.getObjects().find(obj => {
+        return obj.id === objectId
+    })
+    rotatedObj.rotate(angle);
+    canvas.renderAll();
+    rotatedObj.setCoords();
+});
+
+/**
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  * */
 function tellServerToClear() {
@@ -176,7 +226,7 @@ canvas.on('text:changed', function (e) {
         });
     }
     else {
-        var updatedTextObj = canvas.getObjects().find(obj => {
+        let updatedTextObj = canvas.getObjects().find(obj => {
             return obj.id === e.target.id
         })
         let addedChar = updatedTextObj.text.slice(-1);
@@ -187,29 +237,38 @@ canvas.on('text:changed', function (e) {
 });
 
 /**
- * Mazání označených objektů u všech uživatelů
+ * Event - Změna pozice objektu
+ * */
+canvas.on('object:moved', function (e) {
+    let objectCoords = e.target.calcCoords();
+    connection.invoke("ChangeObjectPosition", e.target.id, objectCoords.tl.x, objectCoords.tl.y, groupName).catch(function (err) {
+        return console.error(err.toString());   
+    });
+});
+
+/**
+ * Event - Otočení objektu
+ * */
+canvas.on('object:rotated', function (e) {  
+    connection.invoke("ChangeObjectAngle", e.target.id, e.target.angle, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+/**
+ * Mazání označených objektů
  * */
 $('html').keyup(function (e) {
     if (e.keyCode == 46) {
-        let activeObject = canvas.getActiveObject();
-        let activeGroup = canvas.getActiveGroup();
-        if (activeObject) {
-            connection.invoke("DeleteObjects", [activeObject.id], groupName).catch(function (err) {
-                return console.error(err.toString());
-            });
-            canvas.remove(activeObject);
-        }
-        else if (activeGroup) {
-            let objectsInGroup = activeGroup.getObjects();
-            let objectsIds = [];
-            objectsInGroup.forEach(element => objectsIds.push(element.id));
+        let activeObjects = canvas.getActiveObjects();
+        let objectsIds = [];
+        activeObjects.forEach(element => objectsIds.push(element.id));
+        if (activeObjects.length > 0) {
             connection.invoke("DeleteObjects", objectsIds, groupName).catch(function (err) {
                 return console.error(err.toString());
             });
-            canvas.discardActiveGroup();
-            objectsInGroup.forEach(function (object) {
-                canvas.remove(object);
-            });
+            canvas.discardActiveObject();
+            canvas.remove(...activeObjects);
         }
     }
 });
