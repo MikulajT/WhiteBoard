@@ -67,6 +67,13 @@ function fileSelected(input) {
 }
 
 /**
+ * Export tabule do formátu PNG
+ * */
+function exportToImage() {
+    $('<a>').attr({ href: canvas.toDataURL(), download: 'Board.png' })[0].click();
+}
+
+/**
  * Vložení textu
  * */
 function changetextMode() {
@@ -99,31 +106,6 @@ canvas.on('mouse:down', function (event) {
         iText.enterEditing();
     }
 });
-
-/**
- * Stažení tabule ve formátu JSON
- * */
-function downloadJSONBoard() {
-    let serializedCanvas = JSON.stringify(canvas);
-    serializedCanvas = [serializedCanvas];
-    let blob = new Blob(serializedCanvas, { type: "text/plain;charset=utf-8" });
-
-    //Check the Browser.
-    let isIE = false || !!document.documentMode;
-    if (isIE) {
-        window.navigator.msSaveBlob(blob, "Customers.txt");
-    } else {
-        let url = window.URL || window.webkitURL;
-        link = url.createObjectURL(blob);
-        let a = document.createElement("a");
-        a.download = "Board.json";
-        a.href = link;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
-}
-
 
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
@@ -164,8 +146,8 @@ connection.on("changeTextObject", function (objectId, addedChar) {
         return obj.id === objectId
     })
     updatedTextObj.text += addedChar;
-    canvas.renderAll();
     updatedTextObj.setCoords();
+    canvas.renderAll();
 });
 
 /**
@@ -177,8 +159,25 @@ connection.on("changeObjectPosition", function (objectId, xPos, yPos) {
     })
     movedObj.top = yPos;
     movedObj.left = xPos;
-    canvas.renderAll();
     movedObj.setCoords();
+    canvas.renderAll();
+});
+
+/**
+ * Příkaz ze serveru ke změně velikosti objektu
+ * */
+connection.on("changeObjectSize", function (objectId, newScaleX, newScaleY, newTop, newLeft) {
+    resizedObj = canvas.getObjects().find(obj => {
+        return obj.id === objectId
+    })
+    resizedObj.set({
+        scaleX: newScaleX,
+        scaleY: newScaleY,
+        top: newTop,
+        left: newLeft
+    });
+    //resizedObj.setCoords();
+    canvas.renderAll();
 });
 
 /**
@@ -188,9 +187,8 @@ connection.on("changeObjectAngle", function (objectId, angle) {
     rotatedObj = canvas.getObjects().find(obj => {
         return obj.id === objectId
     })
-    rotatedObj.rotate(angle);
+    rotatedObj.rotate(angle).setCoords();
     canvas.renderAll();
-    rotatedObj.setCoords();
 });
 
 /**
@@ -251,6 +249,15 @@ canvas.on('object:moved', function (e) {
  * */
 canvas.on('object:rotated', function (e) {  
     connection.invoke("ChangeObjectAngle", e.target.id, e.target.angle, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+/**
+ * Event - Změna velikosti objektu
+ * */
+canvas.on('object:scaled', function (e) {
+    connection.invoke("ChangeObjectSize", e.target.id, e.target.scaleX, e.target.scaleY, e.target.top, e.target.left, groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });

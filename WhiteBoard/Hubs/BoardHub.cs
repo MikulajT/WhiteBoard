@@ -64,5 +64,13 @@ namespace WhiteBoard.Hubs
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", objectId, angle);
         }
+
+        /// <summary>
+        /// Příkaz ke změně velikosti objektu
+        /// </summary>
+        public async Task ChangeObjectSize(int objectId, double newScaleX, double newScaleY, double top, double left, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", objectId, newScaleX, newScaleY, top, left);
+        }
     }
 }
