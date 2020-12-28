@@ -1,7 +1,10 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
 let objectId = 1;
 let groupName;
+
 let textMode = false;
+let textEdit = false;
+let globalColor = '#000000';
 
 /**
  * Vytvoření spojení se serverem
@@ -25,6 +28,7 @@ let canvas = new fabric.Canvas('canvas', {
  * */
 let onStartDrawing = function () {
     canvas.isDrawingMode = true;
+    if (textMode) changetextMode();
 }
 
 /**
@@ -74,13 +78,13 @@ function exportToImage() {
 }
 
 /**
- * Vložení textu
+ * Přepnutí do textového rezimu
  * */
 function changetextMode() {
-
     if (!textMode) {
         //canvas.defaultCursor = 'text';
         document.getElementById("text_button").style.backgroundColor = '#a2ffa2';
+        canvas.isDrawingMode = false;
         textMode = true;
     }
     else {
@@ -89,23 +93,40 @@ function changetextMode() {
         textMode = false;
     }
 }
-
+/**
+ * Event - vložení textu
+ * */
 canvas.on('mouse:down', function (event) {
-    if (textMode) {
+    if (textMode && !textEdit) {
         var pointer = canvas.getPointer(event.e);
-        var iText = new fabric.IText('', {
+        let iText = new fabric.IText('', {
             left: pointer.x,
             top: pointer.y,
             fontFamily: 'Helvetica',
-            fill: '#333',
+            fill: globalColor,
             lineHeight: 1.1
         }
         );
         canvas.add(iText);
         canvas.setActiveObject(iText);
+        textEdit = true;
         iText.enterEditing();
     }
 });
+/**
+ * Event - ukonceni editovani textu
+ * */
+canvas.on("text:editing:exited", function (e) {
+    textEdit = false;
+});
+/**
+ * Zmena barvy
+ * */
+function changeColor(color)
+{
+    globalColor = color;
+}
+
 
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
@@ -141,11 +162,11 @@ connection.on("deleteObjects", function (objectIds) {
 /**
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
  * */
-connection.on("changeTextObject", function (objectId, addedChar) {
+connection.on("changeTextObject", function (objectId, updatedText) {
     updatedTextObj = canvas.getObjects().find(obj => {
         return obj.id === objectId
     })
-    updatedTextObj.text += addedChar;
+    updatedTextObj.text = updatedText;
     updatedTextObj.setCoords();
     canvas.renderAll();
 });
@@ -206,6 +227,7 @@ function tellServerToClear() {
  * */
 canvas.on('path:created', function (e) {
     e.path.id = objectId++;
+    e.path.stroke = globalColor;
     objWithId = e.path.toJSON(['id']);
     connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
         return console.error(err.toString());
@@ -227,8 +249,8 @@ canvas.on('text:changed', function (e) {
         let updatedTextObj = canvas.getObjects().find(obj => {
             return obj.id === e.target.id
         })
-        let addedChar = updatedTextObj.text.slice(-1);
-        connection.invoke("ChangeTextObject", e.target.id, addedChar, groupName).catch(function (err) {
+        //let addedChar = updatedTextObj.text.slice(-1);
+        connection.invoke("ChangeTextObject", e.target.id, updatedTextObj.text, groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
