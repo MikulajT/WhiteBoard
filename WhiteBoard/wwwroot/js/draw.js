@@ -126,8 +126,17 @@ function changeColor(color)
 {
     globalColor = color;
 }
+/**
+ * Zkopirovani URL do schranky
+ * */
+document.getElementById("input_link").value = window.location.href;
 
-
+function copyURL()
+{
+    var copyText = document.getElementById("input_link");
+    copyText.select();
+    document.execCommand("copy");
+}
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
  * */
