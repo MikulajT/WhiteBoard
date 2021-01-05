@@ -36,9 +36,9 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaž k odebrání objektů z canvasu pro všechny uživatele kromě odesilatele
         /// </summary>
-        public async Task DeleteObjects(int[] objectIds, string groupName)
+        public async Task DeleteObjects(int[] objectsId, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("deleteObjects", objectIds);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("deleteObjects", objectsId);
         }
 
         /// <summary>
@@ -52,25 +52,25 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaz ke změně pozice objektu
         /// </summary>
-        public async Task ChangeObjectPosition(int objectId, double xPos, double yPos, string groupName)
+        public async Task ChangeObjectPosition(int[] objectsId, double xPos, double yPos, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", objectId, xPos, yPos);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", objectsId, xPos, yPos);
         }
 
         /// <summary>
         /// Příkaz k otočení objektu
         /// </summary>
-        public async Task ChangeObjectAngle(int objectId, double angle, string groupName)
+        public async Task ChangeObjectAngle(int[] objectsId, double angle, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", objectId, angle);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", objectsId, angle);
         }
 
         /// <summary>
         /// Příkaz ke změně velikosti objektu
         /// </summary>
-        public async Task ChangeObjectSize(int objectId, double newScaleX, double newScaleY, double top, double left, string groupName)
+        public async Task ChangeObjectSize(int[] objectsId, string sizeProperties, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", objectId, newScaleX, newScaleY, top, left);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", objectsId, sizeProperties);
         }
     }
 }

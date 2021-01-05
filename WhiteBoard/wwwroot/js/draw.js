@@ -59,10 +59,10 @@ function importFile() {
  * Vložení obrázku do canvasu
  * */
 function fileSelected(input) {
-    var file = input.files[0];
-    var reader = new FileReader();
+    let file = input.files[0];
+    let reader = new FileReader();
     reader.onload = function (f) {
-        var data = f.target.result;
+        let data = f.target.result;
         fabric.Image.fromURL(data, function (img) {
             canvas.add(img);
         });
@@ -98,7 +98,7 @@ function changetextMode() {
  * */
 canvas.on('mouse:down', function (event) {
     if (textMode && !textEdit) {
-        var pointer = canvas.getPointer(event.e);
+        let pointer = canvas.getPointer(event.e);
         let iText = new fabric.IText('', {
             left: pointer.x,
             top: pointer.y,
@@ -133,10 +133,25 @@ document.getElementById("input_link").value = window.location.href;
 
 function copyURL()
 {
-    var copyText = document.getElementById("input_link");
+    let copyText = document.getElementById("input_link");
     copyText.select();
     document.execCommand("copy");
 }
+
+/**
+ * Změna vlastností canvas objektu
+ * */
+function setObjectSizeProperties(canvasObject, sizeProperties) {
+    canvasObject.set({
+        scaleX: sizeProperties['scaleX'],
+        scaleY: sizeProperties['scaleY'],
+        top: sizeProperties['top'],
+        left: sizeProperties['left'],
+        flipX: sizeProperties['flipX'],
+        flipY: sizeProperties['flipY']
+    });
+}
+
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
  * */
@@ -148,7 +163,7 @@ connection.on("clearCanvas", function () {
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
  * */
 connection.on("addObject", function (jsonData) {
-    var jsonObj = JSON.parse(jsonData);
+    let jsonObj = JSON.parse(jsonData);
     fabric.util.enlivenObjects([jsonObj], function (enlivenedObjects) {
         canvas.add(enlivenedObjects[0]);
         canvas.renderAll();
@@ -159,10 +174,10 @@ connection.on("addObject", function (jsonData) {
 /**
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
  * */
-connection.on("deleteObjects", function (objectIds) {
+connection.on("deleteObjects", function (objectsId) {
     objects = canvas.getObjects();
-    for (i = objects.length-1; i > -1; i--) {
-        if (objectIds.includes(objects[i].id)) {
+    for (let i = objects.length-1; i > -1; i--) {
+        if (objectsId.includes(objects[i].id)) {
             canvas.remove(objects[i]);
         }
     }  
@@ -181,43 +196,91 @@ connection.on("changeTextObject", function (objectId, updatedText) {
 });
 
 /**
- * Příkaz ze serveru ke změně pozice objektu
- * */
-connection.on("changeObjectPosition", function (objectId, xPos, yPos) {
-    movedObj = canvas.getObjects().find(obj => {
-        return obj.id === objectId
-    })
-    movedObj.top = yPos;
-    movedObj.left = xPos;
-    movedObj.setCoords();
-    canvas.renderAll();
-});
-
-/**
  * Příkaz ze serveru ke změně velikosti objektu
  * */
-connection.on("changeObjectSize", function (objectId, newScaleX, newScaleY, newTop, newLeft) {
-    resizedObj = canvas.getObjects().find(obj => {
-        return obj.id === objectId
-    })
-    resizedObj.set({
-        scaleX: newScaleX,
-        scaleY: newScaleY,
-        top: newTop,
-        left: newLeft
-    });
-    //resizedObj.setCoords();
+connection.on("changeObjectSize", function (objectsId, sizeProperties) {
+    let newSizeProperties = JSON.parse(sizeProperties);
+    canvasObjects = canvas.getObjects();
+    canvasObjects = canvasObjects.filter(canvasObject => objectsId.includes(canvasObject.id));
+    if (canvasObjects.length == 1) {
+        setObjectSizeProperties(canvasObjects[0], newSizeProperties);
+    }
+    else if (canvasObjects.length > 1) {
+        let group = new fabric.Group();
+        for (let i = 0; i < canvasObjects.length; i++) {
+            group.addWithUpdate(canvasObjects[i]);
+            canvas.remove(canvasObjects[i]);
+        }
+        canvas.add(group);
+        setObjectSizeProperties(group, newSizeProperties);
+        let groupObjects = group.getObjects();
+        group._restoreObjectsState();
+        canvas.remove(group);
+        for (let i = 0; i < groupObjects.length; i++) {
+            canvas.add(groupObjects[i]);
+            canvas.item(canvas.size() - 1).hasControls = true;
+        }
+    }
     canvas.renderAll();
 });
 
 /**
  * Příkaz ze serveru ke změně pozice objektu
  * */
-connection.on("changeObjectAngle", function (objectId, angle) {
-    rotatedObj = canvas.getObjects().find(obj => {
-        return obj.id === objectId
-    })
-    rotatedObj.rotate(angle).setCoords();
+connection.on("changeObjectPosition", function (objectsId, xPos, yPos) {
+    canvasObjects = canvas.getObjects();
+    canvasObjects = canvasObjects.filter(canvasObject => objectsId.includes(canvasObject.id));
+    if (canvasObjects.length == 1) {
+        canvasObjects[0].top = yPos;
+        canvasObjects[0].left = xPos;
+        canvasObjects[0].setCoords();
+    }
+    else if (canvasObjects.length > 1) {
+        let group = new fabric.Group();
+        for (let i = 0; i < canvasObjects.length; i++) {
+            group.addWithUpdate(canvasObjects[i]);
+            canvas.remove(canvasObjects[i]);
+        }
+        canvas.add(group);
+        group.top = yPos;
+        group.left = xPos;
+        group.setCoords();
+        let groupObjects = group.getObjects();
+        group._restoreObjectsState();
+        canvas.remove(group);
+        for (let i = 0; i < groupObjects.length; i++) {
+            canvas.add(groupObjects[i]);
+            canvas.item(canvas.size() - 1).hasControls = true;
+        }
+    }
+    canvas.renderAll();
+});
+
+/**
+ * Příkaz ze serveru ke změně pozice objektu
+ * */
+connection.on("changeObjectAngle", function (objectsId, angle) {
+    canvasObjects = canvas.getObjects();
+    canvasObjects = canvasObjects.filter(canvasObject => objectsId.includes(canvasObject.id));
+    if (canvasObjects.length == 1) {
+        canvasObjects[0].rotate(angle).setCoords();
+    }
+    else if (canvasObjects.length > 1) {
+        let group = new fabric.Group();
+        for (let i = 0; i < canvasObjects.length; i++) {
+            group.addWithUpdate(canvasObjects[i]); 
+            canvas.remove(canvasObjects[i]);
+        }
+        canvas.add(group);
+        group.rotate(angle);
+        let groupObjects = group.getObjects();
+        group._restoreObjectsState();
+        canvas.remove(group);
+        for (let i = 0; i < groupObjects.length; i++) {
+            canvas.add(groupObjects[i]);
+            canvas.item(canvas.size() - 1).hasControls = true;
+        }
+    }
     canvas.renderAll();
 });
 
@@ -269,8 +332,15 @@ canvas.on('text:changed', function (e) {
  * Event - Změna pozice objektu
  * */
 canvas.on('object:moved', function (e) {
+    let objectsId = [];
+    if (e.target._objects) {
+        e.target._objects.forEach(element => objectsId.push(element.id));
+    }
+    else {
+        objectsId.push(e.target.id);
+    }
     let objectCoords = e.target.calcCoords();
-    connection.invoke("ChangeObjectPosition", e.target.id, objectCoords.tl.x, objectCoords.tl.y, groupName).catch(function (err) {
+    connection.invoke("ChangeObjectPosition", objectsId, objectCoords.tl.x, objectCoords.tl.y, groupName).catch(function (err) {
         return console.error(err.toString());   
     });
 });
@@ -279,7 +349,14 @@ canvas.on('object:moved', function (e) {
  * Event - Otočení objektu
  * */
 canvas.on('object:rotated', function (e) {  
-    connection.invoke("ChangeObjectAngle", e.target.id, e.target.angle, groupName).catch(function (err) {
+    let objectsId = [];
+    if (e.target._objects) {
+        e.target._objects.forEach(element => objectsId.push(element.id));
+    }
+    else {
+        objectsId.push(e.target.id);
+    }
+    connection.invoke("ChangeObjectAngle", objectsId, e.target.angle, groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });
@@ -288,7 +365,22 @@ canvas.on('object:rotated', function (e) {
  * Event - Změna velikosti objektu
  * */
 canvas.on('object:scaled', function (e) {
-    connection.invoke("ChangeObjectSize", e.target.id, e.target.scaleX, e.target.scaleY, e.target.top, e.target.left, groupName).catch(function (err) {
+    let objectsId = [];
+    if (e.target._objects) {
+        e.target._objects.forEach(element => objectsId.push(element.id));
+    }
+    else {
+        objectsId.push(e.target.id);
+    }
+    let sizeProperties = {
+        'scaleX': e.target.scaleX,
+        'scaleY': e.target.scaleY,
+        'top': e.target.top,
+        'left': e.target.left,
+        'flipX': e.target.flipX,
+        'flipY': e.target.flipY
+    };
+    connection.invoke("ChangeObjectSize", objectsId, JSON.stringify(sizeProperties), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });
@@ -299,10 +391,10 @@ canvas.on('object:scaled', function (e) {
 $('html').keyup(function (e) {
     if (e.keyCode == 46) {
         let activeObjects = canvas.getActiveObjects();
-        let objectsIds = [];
-        activeObjects.forEach(element => objectsIds.push(element.id));
+        let objectsId = [];
+        activeObjects.forEach(element => objectsId.push(element.id));
         if (activeObjects.length > 0) {
-            connection.invoke("DeleteObjects", objectsIds, groupName).catch(function (err) {
+            connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
                 return console.error(err.toString());
             });
             canvas.discardActiveObject();
