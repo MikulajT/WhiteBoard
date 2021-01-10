@@ -21,7 +21,6 @@ namespace WhiteBoard.Hubs
         /// </summary>
         public async Task ClearCanvas(string groupName)
         {
-            //System.Console.WriteLine(Context.ConnectionId);
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("clearCanvas");
         }
 
@@ -52,25 +51,25 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaz ke změně pozice objektu
         /// </summary>
-        public async Task ChangeObjectPosition(int[] objectsId, double xPos, double yPos, string groupName)
+        public async Task ChangeObjectPosition(string jsonData, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", objectsId, xPos, yPos);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", jsonData);
         }
 
         /// <summary>
         /// Příkaz k otočení objektu
         /// </summary>
-        public async Task ChangeObjectAngle(int[] objectsId, double angle, string groupName)
+        public async Task ChangeObjectAngle(string jsonData, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", objectsId, angle);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", jsonData);
         }
 
         /// <summary>
         /// Příkaz ke změně velikosti objektu
         /// </summary>
-        public async Task ChangeObjectSize(int[] objectsId, string sizeProperties, string groupName)
+        public async Task ChangeObjectSize(string jsonData, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", objectsId, sizeProperties);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", jsonData);
         }
     }
 }
