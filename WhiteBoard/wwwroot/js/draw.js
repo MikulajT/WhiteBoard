@@ -50,26 +50,33 @@ function getGroupName() {
 }
 
 /**
- * Simulované kliknutí při vkládání obrázku do canvasu
+ * Upload obrázku na server
  * */
-function importFile() {
-    document.getElementById('attachment').click();
-}
+$("#imageUpload").change(function () {
+    if (window.FormData !== undefined) {
+        let fileUpload = $("#imageUpload").get(0);
+        let files = fileUpload.files;
+        let fileData = new FormData();
+        fileData.append(files[0].name, files[0]);
+        fileData.append('group', groupName);
 
-/**
- * Vložení obrázku do canvasu
- * */
-function fileSelected(input) {
-    let file = input.files[0];
-    let reader = new FileReader();
-    reader.onload = function (f) {
-        let data = f.target.result;
-        fabric.Image.fromURL(data, function (img) {
-            canvas.add(img);
+        $.ajax({
+            url: '/Room/UploadImage',
+            type: "POST",
+            contentType: false, // Not to set any content header
+            processData: false, // Not to process data
+            data: fileData,
+            success: function () {
+                console.log("Image uploaded.");
+            },
+            error: function (err) {
+                alert(err.statusText);
+            }
         });
-    };
-    reader.readAsDataURL(file);
-}
+    } else {
+        alert("FormData is not supported.");
+    }
+});
 
 /**
  * Export tabule do formátu PNG
@@ -94,6 +101,7 @@ function changetextMode() {
         textMode = false;
     }
 }
+
 /**
  * Event - vložení textu
  * */
@@ -221,7 +229,7 @@ connection.on("changeObjectPosition", function (jsonData) {
 });
 
 /**
- * Příkaz ze serveru ke změně pozice objektu
+ * Příkaz ze serveru k otočení objektu
  * */
 connection.on("changeObjectAngle", function (jsonData) {
     let rotatedObjects = JSON.parse(jsonData);
@@ -237,6 +245,16 @@ connection.on("changeObjectAngle", function (jsonData) {
         }
     }
     canvas.renderAll();
+});
+
+/**
+ * Příkaz ze serveru k vložení obrázku z URL
+ * */
+connection.on("importImage", function (imageAddress) {
+    fabric.Image.fromURL(imageAddress, function (myImg) {
+        myImg.id = objectId++;
+        canvas.add(myImg);
+    });
 });
 
 /**

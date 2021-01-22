@@ -33,8 +33,8 @@
     <div class="rightside">
         <input type="button" onclick="onStartDrawing()" value="Start drawing" />
         <input type="button" onclick="onStopDrawing()" value="Stop drawing" />
-        <input type="file" id="attachment" style="display: none;" onchange="fileSelected(this)" accept="image/*" />
-        <input type="button" id="fileImport" onclick="importFile()" value="Import file" />
+        <input type="file" id="imageUpload" accept="image/*" hidden />
+        <input type="button" value="Add image" onclick="document.getElementById('imageUpload').click();" />
         <input type="button" id="clear_button" onclick="tellServerToClear()" value="Clear Canvas" />
         <input type="button" id="text_button" onclick="changetextMode()" value="Text" />
         <input type="button" id="exportPNG" value="Export to PNG" onclick="exportToImage()" />
@@ -67,8 +67,7 @@
         </div>
     </div>
 </div>
-
+<script src="~/lib/jquery/dist/jquery.js"></script>
 <script src="~/lib/signalr/dist/browser/signalr.js"></script>
 <script src="~/lib/fabricjs/fabric.min.js"></script>
-<script src="~/lib/jquery/dist/jquery.js"></script>
 <script src="~/js/draw.js"></script>

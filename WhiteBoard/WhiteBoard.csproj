@@ -5,4 +5,8 @@
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\uploadedImages\" />
+  </ItemGroup>
+
 </Project>
