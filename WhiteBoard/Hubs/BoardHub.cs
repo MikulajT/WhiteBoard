@@ -35,7 +35,7 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaž k odebrání objektů z canvasu pro všechny uživatele kromě odesilatele
         /// </summary>
-        public async Task DeleteObjects(int[] objectsId, string groupName)
+        public async Task DeleteObjects(string[] objectsId, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("deleteObjects", objectsId);
         }
@@ -43,7 +43,7 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaz ke změně textu již existujícího objektu
         /// </summary>
-        public async Task ChangeTextObject(int objectId, string addedChar, string groupName)
+        public async Task ChangeTextObject(string objectId, string addedChar, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeTextObject", objectId, addedChar);
         }

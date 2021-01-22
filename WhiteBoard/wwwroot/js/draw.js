@@ -1,7 +1,5 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
-let objectId = 1;
 let groupName;
-
 let textMode = false;
 let textEdit = false;
 let globalColor = '#000000';
@@ -47,6 +45,15 @@ function getGroupName() {
     let segmentArray = segmentStr.split('/');
     let groupName = segmentArray.pop();
     return groupName;
+}
+
+/**
+ * Generování GUIDu
+ * */
+function generateGUID() {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
 }
 
 /**
@@ -163,7 +170,6 @@ connection.on("addObject", function (jsonData) {
         canvas.add(enlivenedObjects[0]);
         canvas.renderAll();
     });
-    objectId++;
 });
 
 /**
@@ -252,7 +258,7 @@ connection.on("changeObjectAngle", function (jsonData) {
  * */
 connection.on("importImage", function (imageAddress) {
     fabric.Image.fromURL(imageAddress, function (myImg) {
-        myImg.id = objectId++;
+        myImg.id = generateGUID();
         canvas.add(myImg);
     });
 });
@@ -271,7 +277,7 @@ function tellServerToClear() {
  * Event - vytvoření čáry
  * */
 canvas.on('path:created', function (e) {
-    e.path.id = objectId++;
+    e.path.id = generateGUID();
     e.path.stroke = globalColor;
     objWithId = e.path.toJSON(['id']);
     connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
@@ -284,7 +290,7 @@ canvas.on('path:created', function (e) {
  * */
 canvas.on('text:changed', function (e) {
     if (e.target.id == null) {
-        e.target.id = objectId++;
+        e.target.id = generateGUID();
         objWithId = e.target.toJSON(['id']);
         connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
             return console.error(err.toString());
