@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -13,9 +15,11 @@ namespace WhiteBoard.Controllers
     public class RoomController : Controller
     {
         private IHubContext<BoardHub> HubContext { get; set; }
-        public RoomController(IHubContext<BoardHub> hubcontext)
+        private IWebHostEnvironment _hostEnvironment;
+        public RoomController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment)
         {
             HubContext = hubcontext;
+            _hostEnvironment = environment;
         }
 
         [Route("Board/{roomId}")]
@@ -30,6 +34,10 @@ namespace WhiteBoard.Controllers
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
+        /// <summary>
+        /// Uploadne image na server a pokud je počet souborů v adresáři větši než 10, 
+        /// tak uvolní místo odebráním nejstaršího souboru
+        /// </summary>
         [HttpPost]
         public async void UploadImage()
         {
@@ -45,7 +53,13 @@ namespace WhiteBoard.Controllers
                 {
                     file.CopyTo(fs);
                 }                     
-                await HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}");             
+                await HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}");
+                string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
+                if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 10)
+                {
+                    FileSystemInfo fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos().OrderBy(fi => fi.CreationTime).First();
+                    System.IO.File.Delete(fileInfo.FullName);
+                }
             }
         }
     }
