@@ -140,8 +140,9 @@ canvas.on("text:editing:exited", function (e) {
  * */
 function changeColor(color)
 {
-    globalColor = color;
+    canvas.freeDrawingBrush.color = color;
 }
+
 /**
  * Zkopirovani URL do schranky
  * */
@@ -278,7 +279,6 @@ function tellServerToClear() {
  * */
 canvas.on('path:created', function (e) {
     e.path.id = generateGUID();
-    e.path.stroke = globalColor;
     objWithId = e.path.toJSON(['id']);
     connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
         return console.error(err.toString());
