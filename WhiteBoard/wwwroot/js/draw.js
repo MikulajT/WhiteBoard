@@ -1,8 +1,11 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
 let groupName;
+
 let textMode = false;
 let textEdit = false;
 let globalColor = '#000000';
+
+let drawingMode = false;
 
 /**
  * Vytvoření spojení se serverem
@@ -18,7 +21,9 @@ connection.start().then(function () {
  * Vytvoření canvasu
  * */
 let canvas = new fabric.Canvas('canvas', {
-    isDrawingMode: false
+    isDrawingMode: false,
+    width: window.innerWidth,
+    height: window.innerHeight
 });
 fabric.Object.prototype.lockScalingFlip = true;
 
@@ -35,6 +40,24 @@ let onStartDrawing = function () {
  * */
 let onStopDrawing = function () {
     canvas.isDrawingMode = false;
+}
+
+/**
+ * Přepnutí režimu kreslení
+ * */
+function changeDrawingMode() {
+    if (!drawingMode) {
+        document.getElementById("draw_button").style.backgroundColor = '#dddddd';
+        canvas.isDrawingMode = true;
+        drawingMode = true;
+        if (textMode) changetextMode();
+    }
+    else {
+        canvas.defaultCursor = 'default';
+        document.getElementById("draw_button").style.backgroundColor = 'white';
+        drawingMode = false;
+        canvas.isDrawingMode = false;
+    }
 }
 
 /**
@@ -98,13 +121,14 @@ function exportToImage() {
 function changetextMode() {
     if (!textMode) {
         //canvas.defaultCursor = 'text';
-        document.getElementById("text_button").style.backgroundColor = '#a2ffa2';
+        document.getElementById("text_button").style.backgroundColor = '#dddddd';
         canvas.isDrawingMode = false;
         textMode = true;
+        if (drawingMode) changeDrawingMode();
     }
     else {
         canvas.defaultCursor = 'default';
-        document.getElementById("text_button").style.backgroundColor = '#feee';
+        document.getElementById("text_button").style.backgroundColor = 'white';
         textMode = false;
     }
 }
@@ -141,6 +165,7 @@ canvas.on("text:editing:exited", function (e) {
 function changeColor(color)
 {
     canvas.freeDrawingBrush.color = color;
+    globalColor = color;
 }
 
 /**
