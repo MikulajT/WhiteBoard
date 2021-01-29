@@ -4,113 +4,160 @@
 }
 
 <style>
-    #sketchpadapp {
-        display: flex;
-        justify-content: center;
-        margin: 10px;
+    @@media only screen and (max-width: 1450px) {
+        #sketchpadapp {
+            position: absolute;
+            top: 15px;
+            z-index: 999;
+            width: 59px;
+            left: 16px;
+            background-color: white;
+            border-radius: 5px;
+            padding: 5px;
+            border: solid 2px #000000;
+        }
+
+        .button {
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: white;
+        }
+
+        #drawing-color {
+            margin: 5px;
+            display: block;
+            width: 35px;
+            height: 35px;
+        }
+        .hr {
+            margin-top: -15px;
+            padding: 5px;
+            display: block;
+        }
+
+        .divider {
+            display: inline-block;
+            height: 65%;
+            width: 1px;
+            margin: 0 15px;
+        }
+    }
+    @@media only screen and (min-width: 1450px) {
+        #sketchpadapp {
+            display: grid;
+            background-color: white;
+            border-radius: 5px;
+            padding: 5px;
+            border: solid 2px #000000;
+            position: absolute;
+            top: 15px;
+            z-index: 999;
+            width: 50%;
+            margin-left: auto;
+            margin-right: auto;
+            left: 0;
+            right: 0;
+            text-align: center;
+        }
+
+        .button {
+            display: inline-grid;
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: white;
+        }
+
+        #drawing-color {
+            display: inline-grid;
+            width: 35px;
+            height: 35px;
+        }
+        .divider {
+            display: inline-block;
+            height: 65%;
+            width: 1px;
+            margin: 0 15px;
+        }
+
+        #visible {
+            background-color: #e0e0e0;
+            margin: 0 30px;
+        }
+
+        .hr {
+            display: none;
+        }
     }
 
-    body {
-        overflow: hidden;
-    }
+        body {
+            overflow: hidden;
+        }
 
-    #canvas {
-        background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
-        background-size: 15px 15px;
-    }
+        #canvas {
+            background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
+            background-size: 15px 15px;
+        }
 
-    input[type="button"] {
-        float: left;
-        font-size: 15px;
-        padding: 10px;
-        -webkit-appearance: none;
-        background: #feee;
-        border: 1px solid #888;
-        margin-bottom: 5px;
-        margin-right: 5px;
-    }
+        .button:focus {
+            outline: none;
+        }
 
-    .button {
-        display:inline-grid;
-        border: none;
-        padding: 5px;
-        border-radius: 5px;
-        background-color: white;
-    }
-
-    .button:focus {
-        outline: none;
-    }
-
-    #drawing-color {
-        display: inline-grid;
-        width: 35px;
-        height: 35px;
-    }
-
-    .button img {
-        width: 35px;
-        height: 35px;
-    }
-    .divider {
-        display: inline-block;
-        height: 65%;
-        width: 1px;
-       /* background-color: #e0e0e0;*/
-        margin: 0 15px;
-    }
-
+        .button img {
+            width: 35px;
+            height: 35px;
+        }
 </style>
-<div id="sketchpadapp">
-    <div class="rightside">
-        <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
-            <img src="~/resources/draw.png">
-        </button>
-        <div class="divider"></div>
+<div>
+    <div id="sketchpadapp">
+        <div>
+            <button type="submit" class="button" id="drag_button" onclick="changeDragMode()">
+                <img src="~/resources/grab.png">
+            </button>
+            <div class="divider"></div>
 
-        <button type="submit" class="button" id="text_button" onclick="changetextMode()">
-            <img src="~/resources/text.png">
-        </button>
-        <div class="divider"></div>
+            <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
+                <img src="~/resources/draw.png">
+            </button>
+            <div class="divider"></div>
 
-        <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
-            <img src="~/resources/image.png">
-        </button>
-        <input type="file" id="imageUpload" accept="image/*" hidden />
-        <div class="divider"></div>
+            <button type="submit" class="button" id="text_button" onclick="changetextMode()">
+                <img src="~/resources/text.png">
+            </button>
+            <div class="divider"></div>
 
-        <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
-        <div class="divider"></div>
+            <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
+            <div class="divider" id="visible"></div>
+            <div class="hr"><hr></div>
 
-        <button type="submit" class="button" onclick="tellServerToClear();">
-            <img src="~/resources/clear.png">
-        </button>
-        <div class="divider"></div>
+            <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
+                <img src="~/resources/image.png">
+            </button>
+            <input type="file" id="imageUpload" accept="image/*" hidden />
+            <div class="divider"></div>
 
-        <button type="submit" class="button" onclick="exportToImage();">
-            <img src="~/resources/export.png">
-        </button>
-        <div class="divider"></div>
+            <button type="submit" class="button" onclick="exportToImage();">
+                <img src="~/resources/export.png">
+            </button>
+            <div class="divider"></div>
 
-        <button type="submit" class="button" data-toggle="modal" data-target="#link">
-            <img src="~/resources/share.png">
-        </button>
+            <button type="submit" class="button" onclick="tellServerToClear();">
+                <img src="~/resources/clear.png">
+            </button>
+            <div class="divider" id="visible"></div>
+            <div class="hr"><hr></div>
+
+            <button type="submit" class="button" data-toggle="modal" data-target="#link">
+                <img src="~/resources/share.png">
+            </button>
+        </div>
     </div>
+
+    <canvas id="canvas"></canvas>
 </div>
-<canvas id="canvas"></canvas>
 
-
-<!--
-   <input type="button" id="draw_button" onclick="changeDrawingMode()" value="Start drawing" />
-        <input type="button" onclick="onStopDrawing()" value="Stop drawing" />
-        <input type="file" id="imageUpload" accept="image/*" hidden />
-        <input type="button" value="Add image" onclick="document.getElementById('imageUpload').click();" />
-        <input type="button" id="clear_button" onclick="tellServerToClear()" value="Clear Canvas" />
-        <input type="button" id="text_button" onclick="changetextMode()" value="Text" />
-        <input type="button" id="exportPNG" value="Export to PNG" onclick="exportToImage()" />
-        <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
-        <input type="button" value="Share" data-toggle="modal" data-target="#link" />
--->
+<!-- Modal window -->
 <div class="modal fade" id="link" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">

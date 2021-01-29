@@ -3,12 +3,12 @@ let groupName;
 
 let textMode = false;
 let textEdit = false;
+let drawingMode = false;
+let dragMode = false;
+
 let globalColor = '#000000';
 let undoStack = [];
 let redoStack = [];
-
-
-let drawingMode = false;
 
 /**
  * Vytvoření spojení se serverem
@@ -31,21 +31,6 @@ let canvas = new fabric.Canvas('canvas', {
 fabric.Object.prototype.lockScalingFlip = true;
 
 /**
- * Přepnutí se do režimu kreslení
- * */
-let onStartDrawing = function () {
-    canvas.isDrawingMode = true;
-    if (textMode) changetextMode();
-}
-
-/**
- * Přepnutí se z režimu kreslení
- * */
-let onStopDrawing = function () {
-    canvas.isDrawingMode = false;
-}
-
-/**
  * Přepnutí režimu kreslení
  * */
 function changeDrawingMode() {
@@ -53,15 +38,86 @@ function changeDrawingMode() {
         document.getElementById("draw_button").style.backgroundColor = '#dddddd';
         canvas.isDrawingMode = true;
         drawingMode = true;
+
         if (textMode) changetextMode();
+        if (dragMode) changeDragMode();
     }
     else {
-        canvas.defaultCursor = 'default';
-        document.getElementById("draw_button").style.backgroundColor = 'white';
         drawingMode = false;
         canvas.isDrawingMode = false;
+        canvas.defaultCursor = 'default';
+        document.getElementById("draw_button").style.backgroundColor = 'white';      
     }
 }
+
+/**
+ * Přepnutí do textového rezimu
+ * */
+function changetextMode() {
+    if (!textMode) {
+        canvas.defaultCursor = 'text';
+        document.getElementById("text_button").style.backgroundColor = '#dddddd';
+        textMode = true;
+
+        if (drawingMode) changeDrawingMode();
+        if (dragMode) changeDragMode();
+    }
+    else {
+        textMode = false;
+        canvas.defaultCursor = 'default';
+        document.getElementById("text_button").style.backgroundColor = 'white';       
+    }
+}
+
+/**
+ * Přepnutí režimu pohybu po canvasu
+ * */
+function changeDragMode() {
+    if (!dragMode) {
+        dragMode = true;
+        canvas.defaultCursor = 'grab';
+        document.getElementById("drag_button").style.backgroundColor = '#dddddd';
+
+        if (drawingMode) changeDrawingMode();
+        if (textMode) changetextMode();      
+    }
+    else {
+        dragMode = false;
+        canvas.defaultCursor = 'default';
+        document.getElementById("drag_button").style.backgroundColor = 'white';
+    }
+}
+
+/**
+ * Pohyb po canvasu
+ * */
+canvas.on('mouse:down', function (opt) {
+    var evt = opt.e;
+    if (dragMode) {
+        this.isDragging = true;
+        this.selection = false;
+        this.lastPosX = evt.clientX;
+        this.lastPosY = evt.clientY;
+    }
+});
+canvas.on('mouse:move', function (opt) {
+    if (this.isDragging) {
+        var e = opt.e;
+        var vpt = this.viewportTransform;
+        vpt[4] += e.clientX - this.lastPosX;
+        vpt[5] += e.clientY - this.lastPosY;
+        this.requestRenderAll();
+        this.lastPosX = e.clientX;
+        this.lastPosY = e.clientY;
+    }
+});
+canvas.on('mouse:up', function (opt) {
+    // on mouse up we want to recalculate new interaction
+    // for all objects, so we call setViewportTransform
+    this.setViewportTransform(this.viewportTransform);
+    this.isDragging = false;
+    this.selection = true;
+});
 
 /**
  * Z URL získá skupinu
@@ -72,6 +128,20 @@ function getGroupName() {
     let groupName = segmentArray.pop();
     return groupName;
 }
+
+/**
+ * Zoom
+ * */
+canvas.on('mouse:wheel', function (opt) {
+    var delta = opt.e.deltaY;
+    var zoom = canvas.getZoom();
+    zoom *= 0.999 ** delta;
+    if (zoom > 20) zoom = 20;
+    if (zoom < 0.01) zoom = 0.01;
+    canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+});
 
 /**
  * Generování GUIDu
@@ -118,23 +188,7 @@ function exportToImage() {
     $('<a>').attr({ href: canvas.toDataURL(), download: 'Board.png' })[0].click();
 }
 
-/**
- * Přepnutí do textového rezimu
- * */
-function changetextMode() {
-    if (!textMode) {
-        //canvas.defaultCursor = 'text';
-        document.getElementById("text_button").style.backgroundColor = '#dddddd';
-        canvas.isDrawingMode = false;
-        textMode = true;
-        if (drawingMode) changeDrawingMode();
-    }
-    else {
-        canvas.defaultCursor = 'default';
-        document.getElementById("text_button").style.backgroundColor = 'white';
-        textMode = false;
-    }
-}
+
 
 /**
  * Event - vložení textu
