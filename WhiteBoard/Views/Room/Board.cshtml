@@ -1,20 +1,22 @@
 ﻿@{
+    Layout = "_BoardLayout";
     ViewData["Title"] = "Home Page";
 }
 
 <style>
-    .rightside {
-        float: left;
-        margin-left: 10px;
+    #sketchpadapp {
+        display: flex;
+        justify-content: center;
+        margin: 10px;
+    }
+
+    body {
+        overflow: hidden;
     }
 
     #canvas {
-        float: left;
-        height: 300px;
-        width: 600px;
-        border: 2px solid #888;
-        border-radius: 4px;
-        position: relative; /* Necessary for correct mouse co-ords in Firefox */
+        background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
+        background-size: 15px 15px;
     }
 
     input[type="button"] {
@@ -27,11 +29,79 @@
         margin-bottom: 5px;
         margin-right: 5px;
     }
+
+    .button {
+        display:inline-grid;
+        border: none;
+        padding: 5px;
+        border-radius: 5px;
+        background-color: white;
+    }
+
+    .button:focus {
+        outline: none;
+    }
+
+    #drawing-color {
+        display: inline-grid;
+        width: 35px;
+        height: 35px;
+    }
+
+    .button img {
+        width: 35px;
+        height: 35px;
+    }
+    .divider {
+        display: inline-block;
+        height: 65%;
+        width: 1px;
+       /* background-color: #e0e0e0;*/
+        margin: 0 15px;
+    }
+
 </style>
-<h1>SignalR Sketchpad</h1>
 <div id="sketchpadapp">
     <div class="rightside">
-        <input type="button" onclick="onStartDrawing()" value="Start drawing" />
+        <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
+            <img src="~/resources/draw.png">
+        </button>
+        <div class="divider"></div>
+
+        <button type="submit" class="button" id="text_button" onclick="changetextMode()">
+            <img src="~/resources/text.png">
+        </button>
+        <div class="divider"></div>
+
+        <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
+            <img src="~/resources/image.png">
+        </button>
+        <input type="file" id="imageUpload" accept="image/*" hidden />
+        <div class="divider"></div>
+
+        <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
+        <div class="divider"></div>
+
+        <button type="submit" class="button" onclick="tellServerToClear();">
+            <img src="~/resources/clear.png">
+        </button>
+        <div class="divider"></div>
+
+        <button type="submit" class="button" onclick="exportToImage();">
+            <img src="~/resources/export.png">
+        </button>
+        <div class="divider"></div>
+
+        <button type="submit" class="button" data-toggle="modal" data-target="#link">
+            <img src="~/resources/share.png">
+        </button>
+    </div>
+</div>
+<canvas id="canvas"></canvas>
+
+
+<!--
+   <input type="button" id="draw_button" onclick="changeDrawingMode()" value="Start drawing" />
         <input type="button" onclick="onStopDrawing()" value="Stop drawing" />
         <input type="file" id="imageUpload" accept="image/*" hidden />
         <input type="button" value="Add image" onclick="document.getElementById('imageUpload').click();" />
@@ -39,14 +109,8 @@
         <input type="button" id="text_button" onclick="changetextMode()" value="Text" />
         <input type="button" id="exportPNG" value="Export to PNG" onclick="exportToImage()" />
         <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
-        <br />
-        <br />
-        <canvas id="canvas" width="600" height="300"></canvas>
         <input type="button" value="Share" data-toggle="modal" data-target="#link" />
-    </div>
-</div>
-
-<!--Modal window-->
+-->
 <div class="modal fade" id="link" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
