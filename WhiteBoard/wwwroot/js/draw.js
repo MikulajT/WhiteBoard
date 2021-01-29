@@ -3,6 +3,9 @@ let groupName;
 let textMode = false;
 let textEdit = false;
 let globalColor = '#000000';
+let undoStack = [];
+let redoStack = [];
+
 
 /**
  * Vytvoření spojení se serverem
@@ -165,12 +168,14 @@ connection.on("clearCanvas", function () {
 /**
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
  * */
-connection.on("addObject", function (jsonData) {
-    let jsonObj = JSON.parse(jsonData);
-    fabric.util.enlivenObjects([jsonObj], function (enlivenedObjects) {
-        canvas.add(enlivenedObjects[0]);
-        canvas.renderAll();
-    });
+connection.on("addObject", function (jsonObjects) {
+    for (let i = 0; i < jsonObjects.length; i++) {
+        let jsonObj = JSON.parse(jsonObjects[i]);
+        fabric.util.enlivenObjects([jsonObj], function (enlivenedObjects) {
+            canvas.add(enlivenedObjects[0]);
+            canvas.renderAll();
+        });
+    }
 });
 
 /**
@@ -189,18 +194,16 @@ connection.on("deleteObjects", function (objectsId) {
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
  * */
 connection.on("changeTextObject", function (objectId, updatedText) {
-    updatedTextObj = canvas.getObjects().find(obj => {
-        return obj.id === objectId
-    })
+    updatedTextObj = canvas.getObjects().find(obj => {return obj.id === objectId})
     updatedTextObj.text = updatedText;
     updatedTextObj.setCoords();
     canvas.renderAll();
 });
 
 /**
- * Příkaz ze serveru ke změně velikosti objektu
+ * Přikaz ze serveru k překreslení modifikovaných objektů
  * */
-connection.on("changeObjectSize", function (jsonData) {
+connection.on("modifyObjects", function (jsonData) {
     let resizedObjects = JSON.parse(jsonData);
     objects = canvas.getObjects();
     for (let i = 0; i < objects.length; i++) {
@@ -208,46 +211,10 @@ connection.on("changeObjectSize", function (jsonData) {
             objects[i].set({
                 top: resizedObjects[objects[i].id]["top"],
                 left: resizedObjects[objects[i].id]["left"],
+                angle: resizedObjects[objects[i].id]["angle"],
                 scaleX: resizedObjects[objects[i].id]["scaleX"],
                 scaleY: resizedObjects[objects[i].id]["scaleY"],
             });
-            objects[i].setCoords();
-        }
-    }
-    canvas.renderAll();
-});
-
-/**
- * Příkaz ze serveru ke změně pozice objektu
- * */
-connection.on("changeObjectPosition", function (jsonData) {
-    let movedObjects = JSON.parse(jsonData);
-    objects = canvas.getObjects();
-    for (let i = 0; i < objects.length; i++) {
-        if (objects[i].id in movedObjects) {
-            objects[i].set({
-                top: movedObjects[objects[i].id]["top"],
-                left: movedObjects[objects[i].id]["left"],
-            });
-            objects[i].setCoords();
-        }
-    }
-    canvas.renderAll();
-});
-
-/**
- * Příkaz ze serveru k otočení objektu
- * */
-connection.on("changeObjectAngle", function (jsonData) {
-    let rotatedObjects = JSON.parse(jsonData);
-    objects = canvas.getObjects();
-    for (let i = 0; i < objects.length; i++) {
-        if (objects[i].id in rotatedObjects) {         
-            objects[i].set({               
-                top: rotatedObjects[objects[i].id]["top"],
-                left: rotatedObjects[objects[i].id]["left"],
-                angle: rotatedObjects[objects[i].id]["angle"]
-            }); 
             objects[i].setCoords();
         }
     }
@@ -278,9 +245,12 @@ function tellServerToClear() {
  * Event - vytvoření čáry
  * */
 canvas.on('path:created', function (e) {
-    e.path.id = generateGUID();
+    let objWithId = e.path;
+    objWithId.id = generateGUID();
+    let undoEntry = { action: 'added', objects: [{ id: objWithId.id }] };
+    undoStack.push(undoEntry);
     objWithId = e.path.toJSON(['id']);
-    connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
+    connection.invoke("AddObjects", [JSON.stringify(objWithId)], groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });
@@ -292,14 +262,13 @@ canvas.on('text:changed', function (e) {
     if (e.target.id == null) {
         e.target.id = generateGUID();
         objWithId = e.target.toJSON(['id']);
-        connection.invoke("AddObject", JSON.stringify(objWithId), groupName).catch(function (err) {
+        //TODO - nebude fungovat !
+        connection.invoke("AddObjects", [JSON.stringify(objWithId)], groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
     else {
-        let updatedTextObj = canvas.getObjects().find(obj => {
-            return obj.id === e.target.id
-        })
+        let updatedTextObj = canvas.getObjects().find(obj => { return obj.id === e.target.id})
         //let addedChar = updatedTextObj.text.slice(-1);
         connection.invoke("ChangeTextObject", e.target.id, updatedTextObj.text, groupName).catch(function (err) {
             return console.error(err.toString());
@@ -308,108 +277,248 @@ canvas.on('text:changed', function (e) {
 });
 
 /**
- * Event - Změna pozice objektu
+ * Registrace eventu vytvoření, otočení a změny velikosti objektu k metodě
  * */
-canvas.on('object:moved', function (e) {
-    let jsonData = {};
-    if (e.target._objects) {
-        for (let i = 0; i < e.target._objects.length; i++){
-            var point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
-            var transform = e.target.calcTransformMatrix();
-            var actualCoordinates = fabric.util.transformPoint(point, transform);
-            jsonData[e.target._objects[i].id] = {
-                "top": actualCoordinates.y,
-                "left": actualCoordinates.x
-            };
-        }
-    }
-    else {
-        jsonData[e.target.id] = {
-            "top": e.target.top,
-            "left": e.target.left
-        };
-    }
-    connection.invoke("ChangeObjectPosition", JSON.stringify(jsonData), groupName).catch(function (err) {
-        return console.error(err.toString());   
-    });
+canvas.on({
+    'object:moved': objectModified,
+    'object:rotated': objectModified,
+    'object:scaled': objectModified
 });
 
 /**
- * Event - Otočení objektu
- * */
-canvas.on('object:rotated', function (e) {  
+ * Reakce na modifikaci objektů
+ * @param {any} e
+ */
+function objectModified(e) {
     let jsonData = {};
     if (e.target._objects) {
+        let groupUndoEntries = [];
         for (let i = 0; i < e.target._objects.length; i++) {
-            var point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
-            var transform = e.target.calcTransformMatrix();
-            var actualCoordinates = fabric.util.transformPoint(point, transform);
+            let point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
+            let transform = e.target.calcTransformMatrix();
+            let actualCoordinates = fabric.util.transformPoint(point, transform);
             let matrix = e.target._objects[i].calcTransformMatrix();
             jsonData[e.target._objects[i].id] = {
                 "top": actualCoordinates.y,
                 "left": actualCoordinates.x,
-                "angle": fabric.util.qrDecompose(matrix).angle
+                "angle": fabric.util.qrDecompose(matrix).angle,
+                "scaleX": fabric.util.qrDecompose(matrix).scaleX,
+                "scaleY": fabric.util.qrDecompose(matrix).scaleY,
             };
+            let lastPos = e.target._objects[i].coordsHistory.pop();
+            let undoEntry = { id: e.target._objects[i].id, top: lastPos.top, left: lastPos.left, angle: lastPos.angle, scaleX: lastPos.scaleX, scaleY: lastPos.scaleY };
+            groupUndoEntries.push(undoEntry);
         }
+        undoStack.push({ action: 'modified', objects: groupUndoEntries });
     }
     else {
         jsonData[e.target.id] = {
             "top": e.target.top,
             "left": e.target.left,
             "angle": e.target.angle,
-        };
-    }
-    connection.invoke("ChangeObjectAngle", JSON.stringify(jsonData), groupName).catch(function (err) {
-        return console.error(err.toString());
-    });
-});
-
-/**
- * Event - Změna velikosti objektu
- * */
-canvas.on('object:scaled', function (e) {
-    let jsonData = {};
-    if (e.target._objects) {
-        for (let i = 0; i < e.target._objects.length; i++) {
-            var point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
-            var transform = e.target.calcTransformMatrix();
-            var actualCoordinates = fabric.util.transformPoint(point, transform);
-            let matrix = e.target._objects[i].calcTransformMatrix();
-            jsonData[e.target._objects[i].id] = {
-                "top": actualCoordinates.y,
-                "left": actualCoordinates.x,
-                "scaleX": fabric.util.qrDecompose(matrix).scaleX,
-                "scaleY": fabric.util.qrDecompose(matrix).scaleY,
-            };
-        }
-    }
-    else {
-        jsonData[e.target.id] = {
-            "top": e.target.top,
-            "left": e.target.left,
             "scaleX": e.target.scaleX,
             "scaleY": e.target.scaleY
         };
+        let lastPos = e.target.coordsHistory.pop();
+        let undoEntry = { action: 'modified', objects: [{ id: e.target.id, top: lastPos.top, left: lastPos.left, angle: lastPos.angle, scaleX: lastPos.scaleX, scaleY: lastPos.scaleY }] };
+        undoStack.push(undoEntry);
     }
-    connection.invoke("ChangeObjectSize", JSON.stringify(jsonData), groupName).catch(function (err) {
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
         return console.error(err.toString());
     });
+}
+
+/**
+ * Odstraní označené objekty
+ * */
+function deleteActiveObjects() {
+    let activeObjects = canvas.getActiveObjects();
+    let objectsId = [];
+    activeObjects.forEach(element => objectsId.push(element.id));
+    if (activeObjects.length > 0) {
+        let groupUndoEntries = [];
+        canvas.discardActiveObject();
+        for (let i = 0; i < activeObjects.length; i++) {
+            groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(['id'])));
+            canvas.remove(activeObjects[i]);
+        }
+        undoStack.push({ action: 'removed', objects: groupUndoEntries });
+        connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+}
+
+/**
+ * Uloži aktuální pozici označených objektů při kliknutí
+ * */
+canvas.on('mouse:down', function (e) {
+    if (e.target) {
+        if (e.target._objects) {
+            for (let i = 0; i < e.target._objects.length; i++) {
+                if (!e.target._objects[i].coordsHistory) {
+                    e.target._objects[i].coordsHistory = [];
+                }
+                let point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
+                let transform = e.target.calcTransformMatrix();
+                let actualCoordinates = fabric.util.transformPoint(point, transform);
+                let matrix = e.target._objects[i].calcTransformMatrix();
+                e.target._objects[i].coordsHistory.push({
+                    top: actualCoordinates.y,
+                    left: actualCoordinates.x,
+                    angle: fabric.util.qrDecompose(matrix).angle,
+                    scaleX: fabric.util.qrDecompose(matrix).scaleX,
+                    scaleY: fabric.util.qrDecompose(matrix).scaleY
+                });
+            }
+        }
+        else {
+            if (!e.target.coordsHistory) {
+                e.target.coordsHistory = [];
+            }
+            e.target.coordsHistory.push({ top: e.target.top, left: e.target.left, angle: e.target.angle, scaleX: e.target.scaleX, scaleY: e.target.scaleY });
+        }
+    }
 });
 
 /**
- * Mazání označených objektů
+ * Operace undo
+ * */
+function undo() {
+    if (undoStack.length > 0) {
+        let undoEntry = undoStack.pop();
+        switch (undoEntry.action) {
+            case 'added':
+                undoRedoObjectsInsertion('undo', undoEntry.objects);
+                break;
+            case 'removed':
+                undoRedoObjectsRemoval('undo', undoEntry.objects);
+                break;
+            case 'modified':
+                undoRedoOperation('undo', undoEntry.objects);
+                break;
+        }
+        canvas.renderAll();
+    }
+}
+
+/**
+ * Operace redo
+ * */
+function redo() {
+    if (redoStack.length > 0) {
+        let redoEntry = redoStack.pop();
+        switch (redoEntry.action) {
+                case 'added':
+                    undoRedoObjectsInsertion('redo', redoEntry.objects);
+                    break;
+                case 'removed':
+                    undoRedoObjectsRemoval('redo', redoEntry.objects);
+                    break;
+                case 'modified':
+                    undoRedoOperation('redo', redoEntry.objects);
+                    break;
+            }
+        canvas.renderAll();
+    }
+}
+
+/**
+ * Provede operaci undo/redo na vložených objektech
+ * */
+function undoRedoObjectsInsertion(undoOrRedo, canvasObjects) {
+    let groupEntries = [];
+    let objectsId = [];
+    for (let i = 0; i < canvasObjects.length; i++) {
+        let canvasObj = canvas.getObjects().find(obj => { return obj.id === canvasObjects[i].id });
+        groupEntries.push(JSON.stringify(canvasObj.toJSON(['id'])));
+        canvas.remove(canvasObj);
+        objectsId.push(canvasObjects[i].id);
+    }
+    connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+    if (undoOrRedo == 'undo') {
+        redoStack.push({ action: 'removed', objects: groupEntries });
+    }
+    else {
+        undoStack.push({ action: 'removed', objects: groupEntries });
+    }
+}
+
+/**
+ * Provede operaci undo/redo na odstraněných objektech
+ * */
+function undoRedoObjectsRemoval(undoOrRedo, canvasObjects) {
+    let groupEntries = [];
+    let jsonObjects = [];
+    for (let i = 0; i < canvasObjects.length; i++) {
+        fabric.util.enlivenObjects([JSON.parse(canvasObjects[i])], function (enlivenedObjects) {
+            canvas.add(enlivenedObjects[0].setCoords());
+            canvasObj = enlivenedObjects[0];
+        });
+        groupEntries.push({ id: canvasObj.id });
+        jsonObjects.push(JSON.stringify(canvasObj.toJSON(['id'])));
+    }
+    connection.invoke("AddObjects", jsonObjects, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+    if (undoOrRedo == 'undo') {
+        redoStack.push({ action: 'added', objects: groupEntries });
+    }
+    else {
+        undoStack.push({ action: 'added', objects: groupEntries });
+    }
+}
+
+/**
+ * Provede operaci undo/redo na modifikovaných objektech
+ */
+function undoRedoOperation(undoOrRedo, canvasObjects) {
+    let groupEntries = [];
+    let jsonData = {};
+    for (let i = 0; i < canvasObjects.length; i++) {
+        let canvasObj = canvas.getObjects().find(obj => { return obj.id === canvasObjects[i].id });
+        entry = { id: canvasObj.id, top: canvasObj.top, left: canvasObj.left, angle: canvasObj.angle, scaleX: canvasObj.scaleX, scaleY: canvasObj.scaleY};
+        groupEntries.push(entry);
+        canvasObj.set({
+            top: canvasObjects[i].top,
+            left: canvasObjects[i].left,
+            angle: canvasObjects[i].angle,
+            scaleX: canvasObjects[i].scaleX,
+            scaleY: canvasObjects[i].scaleY
+        });
+        canvasObj.setCoords();
+        jsonData[canvasObj.id] = {
+            "top": canvasObjects[i].top,
+            "left": canvasObjects[i].left,
+            "angle": canvasObjects[i].angle,
+            "scaleX": canvasObjects[i].scaleX,
+            "scaleY": canvasObjects[i].scaleY,
+        };
+    }
+    if (undoOrRedo == 'undo') {
+        redoStack.push({ action: 'modified', objects: groupEntries });
+    }
+    else {
+        undoStack.push({ action: 'modified', objects: groupEntries });
+    }
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
+/**
+ * Provede akci v závislosti na stisknutých tlačítkách
  * */
 $('html').keyup(function (e) {
     if (e.keyCode == 46) {
-        let activeObjects = canvas.getActiveObjects();
-        let objectsId = [];
-        activeObjects.forEach(element => objectsId.push(element.id));
-        if (activeObjects.length > 0) {
-            connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
-                return console.error(err.toString());
-            });
-            canvas.discardActiveObject();
-            canvas.remove(...activeObjects);
-        }
+        deleteActiveObjects();
+    }
+    else if (e.keyCode == 90 && e.ctrlKey) {
+        undo();
+    }
+    else if (e.keyCode == 89 && e.ctrlKey) {
+        redo();
     }
 });

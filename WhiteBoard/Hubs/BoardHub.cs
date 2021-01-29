@@ -27,7 +27,7 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaž k přidání objektu do canvasu pro všechny uživatele kromě odesilatele
         /// </summary>
-        public async Task AddObject(string jsonData, string groupName)
+        public async Task AddObjects(string[] jsonData, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("addObject", jsonData);
         }
@@ -51,25 +51,9 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaz ke změně pozice objektu
         /// </summary>
-        public async Task ChangeObjectPosition(string jsonData, string groupName)
+        public async Task ModifyObjects(string jsonData, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectPosition", jsonData);
-        }
-
-        /// <summary>
-        /// Příkaz k otočení objektu
-        /// </summary>
-        public async Task ChangeObjectAngle(string jsonData, string groupName)
-        {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectAngle", jsonData);
-        }
-
-        /// <summary>
-        /// Příkaz ke změně velikosti objektu
-        /// </summary>
-        public async Task ChangeObjectSize(string jsonData, string groupName)
-        {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectSize", jsonData);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("modifyObjects", jsonData);
         }
     }
 }
