@@ -340,4 +340,4 @@ ASALocalRun/
 healthchecksdb
 
 # Složka uploadedImages
-wwwroot/uploadedImages
+wwwroot/uploadedImages/*
