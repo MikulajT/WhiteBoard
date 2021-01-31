@@ -73,18 +73,27 @@ function changetextMode() {
  * Přepnutí režimu pohybu po canvasu
  * */
 function changeDragMode() {
+    let objects = canvas.getObjects();
     if (!dragMode) {
         dragMode = true;
         canvas.defaultCursor = 'grab';
         document.getElementById("drag_button").style.backgroundColor = '#dddddd';
 
         if (drawingMode) changeDrawingMode();
-        if (textMode) changetextMode();      
+        if (textMode) changetextMode();
+        for (let i = 0; i < objects.length; i++) {
+            objects[i].selectable = false;
+            objects[i].hoverCursor = 'grab';
+        }       
     }
     else {
         dragMode = false;
         canvas.defaultCursor = 'default';
         document.getElementById("drag_button").style.backgroundColor = 'white';
+        for (let i = 0; i < objects.length; i++) {
+            objects[i].selectable = true;
+            objects[i].hoverCursor = null;
+        }  
     }
 }
 
@@ -216,9 +225,11 @@ canvas.on('mouse:down', function (event) {
 canvas.on("text:editing:exited", function (e) {
     textEdit = false;
 });
+
 /**
- * Zmena barvy
- * */
+ * 
+ * @param {any} color
+ */
 function changeColor(color)
 {
     canvas.freeDrawingBrush.color = color;
@@ -261,7 +272,7 @@ connection.on("addObject", function (jsonObjects) {
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
  * */
 connection.on("deleteObjects", function (objectsId) {
-    objects = canvas.getObjects();
+    let objects = canvas.getObjects();
     for (let i = objects.length-1; i > -1; i--) {
         if (objectsId.includes(objects[i].id)) {
             canvas.remove(objects[i]);
@@ -341,7 +352,6 @@ canvas.on('text:changed', function (e) {
     if (e.target.id == null) {
         e.target.id = generateGUID();
         objWithId = e.target.toJSON(['id']);
-        //TODO - nebude fungovat !
         connection.invoke("AddObjects", [JSON.stringify(objWithId)], groupName).catch(function (err) {
             return console.error(err.toString());
         });
@@ -503,8 +513,10 @@ function redo() {
 }
 
 /**
- * Provede operaci undo/redo na vložených objektech
- * */
+ * 
+ * @param {any} undoOrRedo
+ * @param {any} canvasObjects
+ */
 function undoRedoObjectsInsertion(undoOrRedo, canvasObjects) {
     let groupEntries = [];
     let objectsId = [];
@@ -526,8 +538,10 @@ function undoRedoObjectsInsertion(undoOrRedo, canvasObjects) {
 }
 
 /**
- * Provede operaci undo/redo na odstraněných objektech
- * */
+ * 
+ * @param {any} undoOrRedo
+ * @param {any} canvasObjects
+ */
 function undoRedoObjectsRemoval(undoOrRedo, canvasObjects) {
     let groupEntries = [];
     let jsonObjects = [];
@@ -551,7 +565,9 @@ function undoRedoObjectsRemoval(undoOrRedo, canvasObjects) {
 }
 
 /**
- * Provede operaci undo/redo na modifikovaných objektech
+ * 
+ * @param {any} undoOrRedo
+ * @param {any} canvasObjects
  */
 function undoRedoOperation(undoOrRedo, canvasObjects) {
     let groupEntries = [];
@@ -599,5 +615,13 @@ $('html').keyup(function (e) {
     }
     else if (e.keyCode == 89 && e.ctrlKey) {
         redo();
+    }
+    else if ((e.keyCode == 65 || e.keyCode == 97) && e.ctrlKey) {
+        canvas.discardActiveObject();
+        var selection = new fabric.ActiveSelection(canvas.getObjects(), {
+            canvas: canvas,
+        });
+        canvas.setActiveObject(selection);
+        canvas.requestRenderAll();
     }
 });
