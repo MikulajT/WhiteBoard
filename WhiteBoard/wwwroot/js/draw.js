@@ -472,15 +472,15 @@ function deleteActiveObjects() {
 /**
  * Uloži aktuální pozici označených objektů při kliknutí
  * */
-canvas.on("mouse:down", function (e) {
-    if (e.target) {
-        if (canvas.getActiveObject().get("type") == "activeSelection") {
-            for (let i = 0; i < e.target._objects.length; i++) {
-                let point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
-                let transform = e.target.calcTransformMatrix();
+canvas.on("before:transform", function (e) {
+    if (e.transform.target) {
+        if (e.transform.target.get("type") == "activeSelection") {
+            for (let i = 0; i < e.transform.target._objects.length; i++) {
+                let point = new fabric.Point(e.transform.target._objects[i].left, e.transform.target._objects[i].top);
+                let transform = e.transform.target.calcTransformMatrix();
                 let actualCoordinates = fabric.util.transformPoint(point, transform);
-                let matrix = e.target._objects[i].calcTransformMatrix();
-                e.target._objects[i].coordsHistory.push({
+                let matrix = e.transform.target._objects[i].calcTransformMatrix();
+                e.transform.target._objects[i].coordsHistory.push({
                     top: actualCoordinates.y,
                     left: actualCoordinates.x,
                     angle: fabric.util.qrDecompose(matrix).angle,
@@ -490,12 +490,12 @@ canvas.on("mouse:down", function (e) {
             }
         }
         else {
-            e.target.coordsHistory.push({
-                top: e.target.top,
-                left: e.target.left,
-                angle: e.target.angle,
-                scaleX: e.target.scaleX,
-                scaleY: e.target.scaleY
+            e.transform.target.coordsHistory.push({
+                top: e.transform.target.top,
+                left: e.transform.target.left,
+                angle: e.transform.target.angle,
+                scaleX: e.transform.target.scaleX,
+                scaleY: e.transform.target.scaleY
             });
         }
     }
