@@ -25,8 +25,8 @@ connection.start().then(function () {
  * */
 let canvas = new fabric.Canvas("canvas", {
     isDrawingMode: false,
-    width: window.innerWidth,
-    height: window.innerHeight
+    width: window.screen.width,
+    height: window.screen.height
 });
 fabric.Object.prototype.lockScalingFlip = true;
 
