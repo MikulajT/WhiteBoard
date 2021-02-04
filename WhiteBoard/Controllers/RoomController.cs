@@ -52,8 +52,9 @@ namespace WhiteBoard.Controllers
                 using (FileStream fs = System.IO.File.Create(fileName))
                 {
                     file.CopyTo(fs);
-                }                     
-                await HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}");
+                }
+                string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
+                await HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
                 string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
                 if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 10)
                 {

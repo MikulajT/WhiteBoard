@@ -328,9 +328,9 @@ connection.on("modifyObjects", function (jsonData) {
 /**
  * Příkaz ze serveru k vložení obrázku z URL
  * */
-connection.on("importImage", function (imageAddress) {
+connection.on("importImage", function (imageAddress, guid) {
     fabric.Image.fromURL(imageAddress, function (myImg) {
-        myImg.id = generateGUID();
+        myImg.id = guid;
         canvas.add(myImg);
     });
 });
@@ -618,15 +618,14 @@ function undoRedoObjectsModification(undoOrRedo, stackObjects) {
     let jsonData = {};
     for (let i = 0; i < stackObjects.length; i++) {
         let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
-        entry = {
+        groupEntries.push({
             id: canvasObj.id,
             top: canvasObj.top,
             left: canvasObj.left,
             angle: canvasObj.angle,
             scaleX: canvasObj.scaleX,
             scaleY: canvasObj.scaleY
-        };
-        groupEntries.push(entry);
+        });
         canvasObj.set({
             top: stackObjects[i].top,
             left: stackObjects[i].left,
