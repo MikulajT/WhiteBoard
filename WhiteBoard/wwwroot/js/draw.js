@@ -194,7 +194,19 @@ $("#imageUpload").change(function () {
  * Export tabule do formátu PNG
  * */
 function exportToImage() {
-    $("<a>").attr({ href: canvas.toDataURL(), download: "Board.png" })[0].click();
+    var transform = canvas.viewportTransform.slice();
+    canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
+    var sel = new fabric.ActiveSelection(canvas.getObjects(), {
+        canvas: canvas,
+    });
+    $("<a>").attr({
+        href: canvas.toDataURL({
+            format: "png",
+            width: sel.width + sel.left, 
+            height: sel.height + sel.top
+        }), download: "Board"
+    })[0].click();
+    canvas.viewportTransform = transform;
 }
 
 /**
