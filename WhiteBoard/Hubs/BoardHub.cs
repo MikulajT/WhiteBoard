@@ -6,9 +6,8 @@ namespace WhiteBoard.Hubs
 {
     public class BoardHub : Hub
     {
-
         /// <summary>
-        /// Po připojení přiřadí uživatele ke skupine
+        /// Po připojení přiřadí uživatele ke skupině
         /// </summary>
         /// <param name="groupName"></param>
         public async Task AddUserToGroup(string groupName)
@@ -17,7 +16,7 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaž k vyčištění canvasu pro všechny uživatele kromě odesilatele
+        /// Příkaž k vyčištění canvasu
         /// </summary>
         public async Task ClearCanvas(string groupName)
         {
@@ -25,17 +24,17 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaž k přidání objektu do canvasu pro všechny uživatele kromě odesilatele
+        /// Příkaž k přidání objektu do canvasu
         /// </summary>
-        public async Task AddObjects(string[] jsonData, string groupName)
+        public async Task AddObjects(string jsonData, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("addObject", jsonData);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("addObjects", jsonData);
         }
 
         /// <summary>
-        /// Příkaž k odebrání objektů z canvasu pro všechny uživatele kromě odesilatele
+        /// Příkaž k odebrání objektů z canvasu
         /// </summary>
-        public async Task DeleteObjects(string[] objectsId, string groupName)
+        public async Task DeleteObjects(string objectsId, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("deleteObjects", objectsId);
         }
@@ -49,11 +48,19 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaz ke změně pozice objektu
+        /// Příkaz ke změně pozice objektů
         /// </summary>
         public async Task ModifyObjects(string jsonData, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("modifyObjects", jsonData);
+        }
+
+        /// <summary>
+        /// Příkaz ke změně barvy objektů
+        /// </summary>
+        public async Task ChangeObjectsColor(string jsonData, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectsColor", jsonData);
         }
     }
 }

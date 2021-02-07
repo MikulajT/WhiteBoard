@@ -12,7 +12,7 @@ let redoStack = [];
 
 /**
  * Vytvoření spojení se serverem
- * */
+ */
 connection.start().then(function () {
     groupName = getGroupName();
     connection.invoke("AddUserToGroup", groupName)
@@ -22,7 +22,7 @@ connection.start().then(function () {
 
 /**
  * Vytvoření canvasu
- * */
+ */
 let canvas = new fabric.Canvas("canvas", {
     isDrawingMode: false,
     width: window.screen.width,
@@ -31,8 +31,18 @@ let canvas = new fabric.Canvas("canvas", {
 fabric.Object.prototype.lockScalingFlip = true;
 
 /**
+ * Inicializace ovládacího prvku pro výběr barvy
+ */
+$("#color-picker").spectrum({
+    showAlpha: false,
+    allowEmpty: false,
+    showButtons: false,
+    showPaletteOnly: true
+});
+
+/**
  * Přepnutí režimu kreslení
- * */
+ */
 function changeDrawingMode() {
     if (!drawingMode) {
         document.getElementById("draw_button").style.backgroundColor = "#dddddd";
@@ -52,7 +62,7 @@ function changeDrawingMode() {
 
 /**
  * Přepnutí do textového rezimu
- * */
+ */
 function changetextMode() {
     if (!textMode) {
         canvas.defaultCursor = "text";
@@ -71,7 +81,7 @@ function changetextMode() {
 
 /**
  * Přepnutí režimu pohybu po canvasu
- * */
+ */
 function changeDragMode() {
     let objects = canvas.getObjects();
     if (!dragMode) {
@@ -99,7 +109,7 @@ function changeDragMode() {
 
 /**
  * Pohyb po canvasu
- * */
+ */
 canvas.on("mouse:down", function (opt) {
     var evt = opt.e;
     if (dragMode) {
@@ -130,7 +140,7 @@ canvas.on("mouse:up", function (opt) {
 
 /**
  * Z URL získá skupinu
- * */
+ */
 function getGroupName() {
     let segmentStr = window.location.pathname;
     let segmentArray = segmentStr.split("/");
@@ -140,7 +150,7 @@ function getGroupName() {
 
 /**
  * Zoom
- * */
+ */
 canvas.on("mouse:wheel", function (opt) {
     var delta = opt.e.deltaY;
     var zoom = canvas.getZoom();
@@ -154,7 +164,7 @@ canvas.on("mouse:wheel", function (opt) {
 
 /**
  * Generování GUIDu
- * */
+ */
 function generateGUID() {
     return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -163,7 +173,7 @@ function generateGUID() {
 
 /**
  * Upload obrázku na server
- * */
+ */
 $("#imageUpload").change(function () {
     if (window.FormData !== undefined) {
         let fileUpload = $("#imageUpload").get(0);
@@ -192,7 +202,7 @@ $("#imageUpload").change(function () {
 
 /**
  * Export tabule do formátu PNG
- * */
+ */
 function exportToImage() {
     var transform = canvas.viewportTransform.slice();
     canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
@@ -202,8 +212,10 @@ function exportToImage() {
     $("<a>").attr({
         href: canvas.toDataURL({
             format: "png",
-            width: sel.width + sel.left, 
-            height: sel.height + sel.top
+            width: sel.width + Math.abs(sel.left), 
+            height: sel.height + Math.abs(sel.top),
+            left: sel.left < 0 ? sel.left : null,
+            top: sel.top < 0 ? sel.left : null,
         }), download: "Board"
     })[0].click();
     canvas.viewportTransform = transform;
@@ -211,7 +223,7 @@ function exportToImage() {
 
 /**
  * Event - vložení textu
- * */
+ */
 canvas.on("mouse:down", function (event) {
     if (textMode && !textEdit) {
         let pointer = canvas.getPointer(event.e);
@@ -232,7 +244,7 @@ canvas.on("mouse:down", function (event) {
 
 /**
  * Event - ukonceni editovani textu
- * */
+ */
 canvas.on("text:editing:exited", function (e) {
     textEdit = false;
     let editedObject = e.target;
@@ -253,18 +265,41 @@ canvas.on("text:editing:exited", function (e) {
 });
 
 /**
- * Změní barvu kreslené čáry
- * @param {any} color
+ * Event - změní barvu štětce případně i oznažených objektů
  */
-function changeColor(color)
-{
-    canvas.freeDrawingBrush.color = color;
-    globalColor = color;
-}
+$("#color-picker").on("move.spectrum", function (e, color) {
+    let changedColor = color.toHexString();
+    canvas.freeDrawingBrush.color = changedColor;
+    globalColor = changedColor;
+    let activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length > 0) {
+        let jsonData = {};
+        for (let i = 0; i < activeObjects.length; i++) {
+            if (activeObjects[i].get("type") == "path") {
+                activeObjects[i].set("stroke", changedColor);
+                jsonData[activeObjects[i].id] = {
+                    "propertyType": "stroke",
+                    "color": changedColor,
+                };
+            }
+            else {
+                activeObjects[i].set("fill", changedColor);
+                jsonData[activeObjects[i].id] = {
+                    "propertyType": "fill",
+                    "color": changedColor,
+                };
+            }
+        }
+        canvas.requestRenderAll();
+        connection.invoke("ChangeObjectsColor", JSON.stringify(jsonData), groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+});
 
 /**
  * Zkopirovani URL do schranky
- * */
+ */
 document.getElementById("input_link").value = window.location.href;
 
 function copyURL()
@@ -276,31 +311,32 @@ function copyURL()
 
 /**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
- * */
+ */
 connection.on("clearCanvas", function () {
     canvas.clear();
 });
 
 /**
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
- * */
-connection.on("addObject", function (jsonObjects) {
-    for (let i = 0; i < jsonObjects.length; i++) {
-        let jsonObj = JSON.parse(jsonObjects[i]);
-        fabric.util.enlivenObjects([jsonObj], function (enlivenedObjects) {
+ */
+connection.on("addObjects", function (jsonObjects) {
+    var addedObjects = JSON.parse(jsonObjects);
+    for (let i = 0; i < addedObjects.length; i++) {
+        fabric.util.enlivenObjects([addedObjects[i]], function (enlivenedObjects) {
             canvas.add(enlivenedObjects[0]);
-            canvas.renderAll();
+            canvas.requestRenderAll();
         });
     }
 });
 
 /**
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
- * */
+ */
 connection.on("deleteObjects", function (objectsId) {
+    var removedObjects = JSON.parse(objectsId);
     let objects = canvas.getObjects();
     for (let i = objects.length-1; i > -1; i--) {
-        if (objectsId.includes(objects[i].id)) {
+        if (removedObjects.includes(objects[i].id)) {
             canvas.remove(objects[i]);
         }
     }  
@@ -308,17 +344,17 @@ connection.on("deleteObjects", function (objectsId) {
 
 /**
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
- * */
+ */
 connection.on("changeTextObject", function (objectId, updatedText) {
     updatedTextObj = canvas.getObjects().find(obj => {return obj.id === objectId})
     updatedTextObj.text = updatedText;
     updatedTextObj.setCoords();
-    canvas.renderAll();
+    canvas.requestRenderAll();
 });
 
 /**
  * Přikaz ze serveru k překreslení modifikovaných objektů
- * */
+ */
 connection.on("modifyObjects", function (jsonData) {
     let resizedObjects = JSON.parse(jsonData);
     objects = canvas.getObjects();
@@ -334,12 +370,26 @@ connection.on("modifyObjects", function (jsonData) {
             objects[i].setCoords();
         }
     }
-    canvas.renderAll();
+    canvas.requestRenderAll();
+});
+
+/**
+ * Přikaz ze serveru k překreslení modifikovaných objektů
+ */
+connection.on("changeObjectsColor", function (jsonData) {
+    let changedColorObject = JSON.parse(jsonData);
+    objects = canvas.getObjects();
+    for (let i = 0; i < objects.length; i++) {
+        if (objects[i].id in changedColorObject) {
+            objects[i].set(changedColorObject[objects[i].id]["propertyType"], changedColorObject[objects[i].id]["color"]);
+        }
+    }
+    canvas.requestRenderAll();
 });
 
 /**
  * Příkaz ze serveru k vložení obrázku z URL
- * */
+ */
 connection.on("importImage", function (imageAddress, guid) {
     fabric.Image.fromURL(imageAddress, function (myImg) {
         myImg.id = guid;
@@ -349,7 +399,7 @@ connection.on("importImage", function (imageAddress, guid) {
 
 /**
  * Požadavek na server k vyčíštění canvasu všech uživatelů
- * */
+ */
 function tellServerToClear() {
     canvas.clear();
     connection.invoke("ClearCanvas", groupName).catch(function (err) {
@@ -359,26 +409,26 @@ function tellServerToClear() {
 
 /**
  * Event - vytvoření čáry
- * */
+ */
 canvas.on("path:created", function (e) {
     let objWithId = e.path;
     objWithId.id = generateGUID();
     let undoEntry = { action: "added", objects: [{ id: objWithId.id }] };
     undoStack.push(undoEntry);
     objWithId = e.path.toJSON(["id"]);
-    connection.invoke("AddObjects", [JSON.stringify(objWithId)], groupName).catch(function (err) {
+    connection.invoke("AddObjects", JSON.stringify([objWithId]), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 });
 
 /**
  * Event - Změna vkládaného textu
- * */
+ */
 canvas.on("text:changed", function (e) {
     if (e.target.id == null) {
         e.target.id = generateGUID();
         objWithId = e.target.toJSON(["id"]);
-        connection.invoke("AddObjects", [JSON.stringify(objWithId)], groupName).catch(function (err) {
+        connection.invoke("AddObjects", JSON.stringify([objWithId]), groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
@@ -393,7 +443,7 @@ canvas.on("text:changed", function (e) {
 
 /**
  * Registrace eventu vytvoření, otočení a změny velikosti objektu k metodě
- * */
+ */
 canvas.on({
     "object:moved": objectModified,
     "object:rotated": objectModified,
@@ -462,7 +512,7 @@ function objectModified(e) {
 
 /**
  * Odstraní označené objekty
- * */
+ */
 function deleteActiveObjects() {
     let activeObjects = canvas.getActiveObjects();
     let objectsId = [];
@@ -475,7 +525,7 @@ function deleteActiveObjects() {
             canvas.remove(activeObjects[i]);
         }
         undoStack.push({ action: "removed", objects: groupUndoEntries });
-        connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
+        connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
@@ -483,7 +533,7 @@ function deleteActiveObjects() {
 
 /**
  * Uloži aktuální pozici označených objektů při kliknutí
- * */
+ */
 canvas.on("before:transform", function (e) {
     if (e.transform.target) {
         if (e.transform.target.get("type") == "activeSelection") {
@@ -513,6 +563,9 @@ canvas.on("before:transform", function (e) {
     }
 });
 
+/**
+ * Event - vložení objektu
+ */
 canvas.on("object:added", function (e) {
     e.target.coordsHistory = [];
     if (e.target.get("type") == "i-text") {
@@ -521,8 +574,32 @@ canvas.on("object:added", function (e) {
 });
 
 /**
+ * Registrace eventů pro změnu barvy colorpickeru
+ */
+canvas.on({
+    "selection:created": updateColorpickerValue,
+    "selection:updated": updateColorpickerValue
+});
+
+function updateColorpickerValue(e) {
+    selectedObjects = e.selected;
+    if (selectedObjects.length == 1) {
+        let color;
+        if (selectedObjects[0].get("type") == "path") {
+            color = selectedObjects[0].stroke;
+        }
+        else {
+            color = selectedObjects[0].fill;
+        }
+        $("#color-picker").spectrum("set", color);
+        canvas.freeDrawingBrush.color = color;
+        globalColor = color;
+    }
+}
+
+/**
  * Operace undo
- * */
+ */
 function undo() {
     if (undoStack.length > 0) {
         let undoEntry = undoStack.pop();
@@ -540,13 +617,13 @@ function undo() {
                 undoRedoTextChange("undo", undoEntry.objects);
                 break;
         }
-        canvas.renderAll();
+        canvas.requestRenderAll();
     }
 }
 
 /**
  * Operace redo
- * */
+ */
 function redo() {
     if (redoStack.length > 0) {
         let redoEntry = redoStack.pop();
@@ -564,7 +641,7 @@ function redo() {
                     undoRedoTextChange("redo", redoEntry.objects);
                     break;
             }
-        canvas.renderAll();
+        canvas.requestRenderAll();
     }
 }
 
@@ -588,7 +665,7 @@ function undoRedoObjectsInsertion(undoOrRedo, stackObjects) {
     else {
         undoStack.push({ action: "removed", objects: groupEntries });
     }
-    connection.invoke("DeleteObjects", objectsId, groupName).catch(function (err) {
+    connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }
@@ -607,7 +684,7 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
             canvasObj = enlivenedObjects[0];
         });
         groupEntries.push({ id: canvasObj.id });
-        jsonObjects.push(JSON.stringify(canvasObj.toJSON(["id"])));
+        jsonObjects.push(canvasObj.toJSON(["id"]));
     }
     if (undoOrRedo == "undo") {
         redoStack.push({ action: "added", objects: groupEntries });
@@ -615,7 +692,7 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
     else {
         undoStack.push({ action: "added", objects: groupEntries });
     }
-    connection.invoke("AddObjects", jsonObjects, groupName).catch(function (err) {
+    connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }
@@ -689,7 +766,7 @@ function undoRedoTextChange(undoOrRedo, stackObject) {
 
 /**
  * Provede akci v závislosti na stisknutých tlačítkách
- * */
+ */
 $("html").keyup(function (e) {
     if (e.keyCode == 46) {
         deleteActiveObjects();

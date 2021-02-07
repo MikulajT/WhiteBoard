@@ -2,7 +2,7 @@
     Layout = "_BoardLayout";
     ViewData["Title"] = "Home Page";
 }
-
+<link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
 <style>
     @@media only screen and (max-width: 1450px) {
         #sketchpadapp {
@@ -130,7 +130,7 @@
             </button>
             <div class="divider"></div>
 
-            <input type="color" id="drawing-color" value="#000000" onchange="changeColor(this.value);">
+            <input id="color-picker" type="color" value="#000000"/>
             <div class="divider" id="visible"></div>
             <div class="hr"><hr></div>
 
@@ -206,4 +206,5 @@
 <script src="~/lib/jquery/dist/jquery.js"></script>
 <script src="~/lib/signalr/dist/browser/signalr.js"></script>
 <script src="~/lib/fabricjs/fabric.min.js"></script>
-<script src="~/js/draw.js"></script>
+<script defer src="~/js/spectrum.js"></script>
+<script defer src="~/js/draw.js"></script>
