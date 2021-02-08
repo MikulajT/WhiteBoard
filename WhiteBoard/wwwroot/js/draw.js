@@ -6,7 +6,6 @@ let textEdit = false;
 let drawingMode = false;
 let dragMode = false;
 
-let globalColor = "#000000";
 let undoStack = [];
 let redoStack = [];
 
@@ -222,16 +221,41 @@ function exportToImage() {
 }
 
 /**
+ * Ulozeni canvasu jako projektu
+ */
+function saveProject(el) {
+    var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas));
+    el.setAttribute("href", "data:" + data);
+    el.setAttribute("download", "Board.json");
+}
+
+/**
+ * Nacteni canvasu jako projektu
+ */
+$(document).on('change', '#projectUpload', function (event) {
+    var reader = new FileReader();
+
+    reader.onload = function (event) {
+        var jsonObj = JSON.parse(event.target.result);
+        canvas.loadFromJSON(jsonObj);
+    }
+
+    reader.readAsText(event.target.files[0]);
+});
+
+
+/**
  * Event - vložení textu
  */
 canvas.on("mouse:down", function (event) {
     if (textMode && !textEdit) {
         let pointer = canvas.getPointer(event.e);
+        let color = $("#color-picker").val();
         let iText = new fabric.IText("", {
             left: pointer.x,
             top: pointer.y,
             fontFamily: "Helvetica",
-            fill: globalColor,
+            fill: color,
             lineHeight: 1.1
         }
         );
@@ -270,7 +294,6 @@ canvas.on("text:editing:exited", function (e) {
 $("#color-picker").on("move.spectrum", function (e, color) {
     let changedColor = color.toHexString();
     canvas.freeDrawingBrush.color = changedColor;
-    globalColor = changedColor;
     let activeObjects = canvas.getActiveObjects();
     if (activeObjects.length > 0) {
         let jsonData = {};
@@ -593,7 +616,6 @@ function updateColorpickerValue(e) {
         }
         $("#color-picker").spectrum("set", color);
         canvas.freeDrawingBrush.color = color;
-        globalColor = color;
     }
 }
 
