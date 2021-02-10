@@ -8,6 +8,7 @@ let dragMode = false;
 
 let undoStack = [];
 let redoStack = [];
+let clonedObjects;
 
 /**
  * Vytvoření spojení se serverem
@@ -224,7 +225,7 @@ function exportToImage() {
  * Ulozeni canvasu jako projektu
  */
 function saveProject(el) {
-    var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas));
+    var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id'])));
     el.setAttribute("href", "data:" + data);
     el.setAttribute("download", "Board.json");
 }
@@ -238,6 +239,9 @@ $(document).on('change', '#projectUpload', function (event) {
     reader.onload = function (event) {
         var jsonObj = JSON.parse(event.target.result);
         canvas.loadFromJSON(jsonObj);
+        connection.invoke("LoadCanvas", event.target.result, groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
     }
 
     reader.readAsText(event.target.files[0]);
@@ -297,8 +301,11 @@ $("#color-picker").on("move.spectrum", function (e, color) {
     let activeObjects = canvas.getActiveObjects();
     if (activeObjects.length > 0) {
         let jsonData = {};
+        let groupUndoEntries = [];
         for (let i = 0; i < activeObjects.length; i++) {
+            let undoEntry;
             if (activeObjects[i].get("type") == "path") {
+                undoEntry = { id: activeObjects[i].id, propertyType: "stroke", "color": activeObjects[i].stroke };
                 activeObjects[i].set("stroke", changedColor);
                 jsonData[activeObjects[i].id] = {
                     "propertyType": "stroke",
@@ -306,13 +313,16 @@ $("#color-picker").on("move.spectrum", function (e, color) {
                 };
             }
             else {
+                undoEntry = { id: activeObjects[i].id, propertyType: "fill", "color": activeObjects[i].fill };
                 activeObjects[i].set("fill", changedColor);
                 jsonData[activeObjects[i].id] = {
                     "propertyType": "fill",
                     "color": changedColor,
                 };
             }
+            groupUndoEntries.push(undoEntry);
         }
+        undoStack.push({ action: "colorChanged", objects: groupUndoEntries });
         canvas.requestRenderAll();
         connection.invoke("ChangeObjectsColor", JSON.stringify(jsonData), groupName).catch(function (err) {
             return console.error(err.toString());
@@ -340,6 +350,13 @@ connection.on("clearCanvas", function () {
 });
 
 /**
+ * Příkaz ze serveru k načtení canvasu z JSONu
+ */
+connection.on("loadCanvas", function (jsonCanvas) {
+    canvas.loadFromJSON(jsonCanvas);
+});
+
+/**
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
  */
 connection.on("addObjects", function (jsonObjects) {
@@ -347,9 +364,9 @@ connection.on("addObjects", function (jsonObjects) {
     for (let i = 0; i < addedObjects.length; i++) {
         fabric.util.enlivenObjects([addedObjects[i]], function (enlivenedObjects) {
             canvas.add(enlivenedObjects[0]);
-            canvas.requestRenderAll();
         });
     }
+    canvas.requestRenderAll();
 });
 
 /**
@@ -424,6 +441,8 @@ connection.on("importImage", function (imageAddress, guid) {
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  */
 function tellServerToClear() {
+    let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id']))};
+    undoStack.push(undoEntry);
     canvas.clear();
     connection.invoke("ClearCanvas", groupName).catch(function (err) {
         return console.error(err.toString());
@@ -491,7 +510,7 @@ function objectModified(e) {
                 "left": actualCoordinates.x,
                 "angle": fabric.util.qrDecompose(matrix).angle,
                 "scaleX": fabric.util.qrDecompose(matrix).scaleX,
-                "scaleY": fabric.util.qrDecompose(matrix).scaleY,
+                "scaleY": fabric.util.qrDecompose(matrix).scaleY
             };
             let lastPos = e.target._objects[i].coordsHistory.pop();
             let undoEntry = {
@@ -638,6 +657,12 @@ function undo() {
             case "textChanged":
                 undoRedoTextChange("undo", undoEntry.objects);
                 break;
+            case "canvasCleared":
+                undoRedoCanvasClear("undo", undoEntry.canvas);
+                break;
+            case "colorChanged":
+                undoRedoColorChange("undo", undoEntry.objects);
+                break;
         }
         canvas.requestRenderAll();
     }
@@ -661,6 +686,12 @@ function redo() {
                     break;
                 case "textChanged":
                     undoRedoTextChange("redo", redoEntry.objects);
+                    break;
+                case "canvasCleared":
+                    undoRedoCanvasClear("redo");
+                    break;
+                case "colorChanged":
+                    undoRedoColorChange("redo", redoEntry.objects);
                     break;
             }
         canvas.requestRenderAll();
@@ -787,24 +818,156 @@ function undoRedoTextChange(undoOrRedo, stackObject) {
 }
 
 /**
+ * Provede undo/redo odstranění canvasu
+ * @param {any} undoOrRedo
+ * @param {any} jsonCanvas
+ */
+function undoRedoCanvasClear(undoOrRedo, jsonCanvas) {
+    if (undoOrRedo == "undo") {
+        canvas.loadFromJSON(jsonCanvas);
+        redoStack.push({ action: "canvasCleared" });
+        connection.invoke("LoadCanvas", jsonCanvas, groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+    else {
+        let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id'])) };
+        undoStack.push(undoEntry);
+        canvas.clear();
+        connection.invoke("ClearCanvas", groupName).catch(function (err) {
+            return console.error(err.toString());
+        });
+    }
+}
+
+/**
+ * Provede undo/redo změny barvy objektů
+ * @param {any} undoOrRedo
+ * @param {any} stackObject
+ */
+function undoRedoColorChange(undoOrRedo, stackObjects) {
+    let groupEntries = [];
+    let jsonData = {};
+    for (let i = 0; i < stackObjects.length; i++) {
+        let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
+        groupEntries.push({
+            id: canvasObj.id,
+            propertyType: stackObjects[i].propertyType,
+            "color": stackObjects[i].propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
+        });
+        canvasObj.set(stackObjects[i].propertyType, stackObjects[i].color);
+        jsonData[canvasObj.id] = {
+            "propertyType": stackObjects[i].propertyType,
+            "color": stackObjects[i].propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
+        };
+    }
+    if (undoOrRedo == "undo") {
+        redoStack.push({ action: "colorChanged", objects: groupEntries });
+    }
+    else {
+        undoStack.push({ action: "colorChanged", objects: groupEntries });
+    }
+    connection.invoke("ChangeObjectsColor", JSON.stringify(jsonData), groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
+/**
+ * Vybere všechny objekty
+ */
+function selectAllObjects() {
+    canvas.discardActiveObject();
+    var selection = new fabric.ActiveSelection(canvas.getObjects(), {
+        canvas: canvas,
+    });
+    canvas.setActiveObject(selection);
+    canvas.requestRenderAll();
+}
+
+/**
+ * Zkopíruje vybrané objekty
+ */
+function copyObjects() {
+    if (canvas.getActiveObject()) {
+        canvas.getActiveObject().clone(function (cloned) {
+            clonedObjects = cloned;
+        });
+    }
+}
+
+/**
+ * TODO - nefunguje správně, na server odesílá špatné pozice objektů
+ * */
+//function pasteObjects() {
+//    clonedObjects.clone(function (clonedObj) {
+//        let jsonObjects = [];
+//        canvas.discardActiveObject();
+//        clonedObj.set({
+//            left: clonedObj.left + 50,
+//            top: clonedObj.top + 50,
+//            evented: true,
+//        });
+//        if (clonedObj.type === "activeSelection") {
+//            clonedObj.canvas = canvas;
+//            clonedObj.forEachObject(function (obj) {
+//                canvas.add(obj);
+//                obj.id = generateGUID();
+//                let point = new fabric.Point(obj.left, obj.top);
+//                let transform = obj.calcTransformMatrix();
+//                let actualCoordinates = fabric.util.transformPoint(point, transform);
+//                let lastTop = obj.top;
+//                let lastLeft = obj.left;
+//                obj.set({
+//                    top: actualCoordinates.y,
+//                    left: actualCoordinates.x
+//                });
+//                jsonObjects.push(obj.toJSON(["id"]));
+//                obj.top = lastTop;
+//                obj.left = lastLeft;
+//            });
+//            clonedObj.setCoords();
+//        } else {
+//            canvas.add(clonedObj);
+//            clonedObj.id = generateGUID();
+//            jsonObjects.push(clonedObj.toJSON(["id"]));
+
+//        }
+//        connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
+//            return console.error(err.toString());
+//        });
+//        clonedObjects.top += 50;
+//        clonedObjects.left += 50;
+//        canvas.setActiveObject(clonedObj);
+//        canvas.requestRenderAll();
+//    });
+//}
+
+/**
  * Provede akci v závislosti na stisknutých tlačítkách
  */
 $("html").keyup(function (e) {
+    //CTRL + DELETE
     if (e.keyCode == 46) {
         deleteActiveObjects();
     }
+    //CTRL + Z
     else if (e.keyCode == 90 && e.ctrlKey) {
         undo();
     }
+    //CTRL + Y
     else if (e.keyCode == 89 && e.ctrlKey) {
         redo();
     }
-    else if ((e.keyCode == 65 || e.keyCode == 97) && e.ctrlKey) {
-        canvas.discardActiveObject();
-        var selection = new fabric.ActiveSelection(canvas.getObjects(), {
-            canvas: canvas,
-        });
-        canvas.setActiveObject(selection);
-        canvas.requestRenderAll();
+    //CTRL + A
+    else if ((e.keyCode == 65) && e.ctrlKey) {
+        selectAllObjects();
     }
+    //CTRL + C
+    else if ((e.keyCode == 67) && e.ctrlKey) {
+        copyObjects();
+    }
+    //CTRL + V
+    //else if ((e.keyCode == 86) && e.ctrlKey) {
+    //    pasteObjects();
+    //}
 });

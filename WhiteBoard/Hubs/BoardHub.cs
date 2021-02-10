@@ -16,6 +16,14 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
+        /// Příkaž k načtení canvasu z JSONu
+        /// </summary>
+        public async Task LoadCanvas(string canvas, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("loadCanvas", canvas);
+        }
+
+        /// <summary>
         /// Příkaž k vyčištění canvasu
         /// </summary>
         public async Task ClearCanvas(string groupName)
