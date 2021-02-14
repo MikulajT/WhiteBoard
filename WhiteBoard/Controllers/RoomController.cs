@@ -15,7 +15,7 @@ namespace WhiteBoard.Controllers
     public class RoomController : Controller
     {
         private IHubContext<BoardHub> HubContext { get; set; }
-        private IWebHostEnvironment _hostEnvironment;
+        private readonly IWebHostEnvironment _hostEnvironment;
         public RoomController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment)
         {
             HubContext = hubcontext;

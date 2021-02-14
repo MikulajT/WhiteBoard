@@ -30,6 +30,17 @@ let canvas = new fabric.Canvas("canvas", {
 });
 fabric.Object.prototype.lockScalingFlip = true;
 
+/*
+ * Umožňuje uložit obrázky do JSONu při exportu tabule do nativního formátu
+ */
+fabric.Image.prototype.toObject = (function (toObject) {
+    return function () {
+        return fabric.util.object.extend(toObject.call(this), {
+            src: this.toDataURL()
+        });
+    };
+})(fabric.Image.prototype.toObject);
+
 /**
  * Inicializace ovládacího prvku pro výběr barvy
  */
@@ -39,6 +50,72 @@ $("#color-picker").spectrum({
     showButtons: false,
     showPaletteOnly: true
 });
+
+/*
+ * Inicializace kontextového menu
+ */
+$.contextMenu({
+    selector: '.context-menu',
+    items: {
+        toFront: {
+            name: "Move to front",
+            disabled: true,
+            callback: function () {
+                moveObjectsStack("front");
+            }
+        },
+        toBack: {
+            name: "Move to back",
+            disabled: true,
+            callback: function () {
+                moveObjectsStack("back");
+            }
+        },
+        "sep1": "---------",
+        removeObj: {
+            name: "Remove",
+            disabled: true,
+            icon: "delete",
+            callback: deleteActiveObjects
+        }
+    },
+    events: {
+        show: contextMenuShowed
+    }
+});
+
+/*
+ * Přesune vybrané objekty do horní nebo spodní vrstvy canvasu
+ */
+function moveObjectsStack(frontOrBack) {
+    let activeObjects = canvas.getActiveObjects();
+    let objectsId = [];
+    if (frontOrBack == "front") {
+        for (let i = 0; i < activeObjects.length; i++) {
+            activeObjects[i].bringToFront();
+            objectsId.push(activeObjects[i].id);
+        }
+    }
+    else {
+        for (let i = 0; i < activeObjects.length; i++) {
+            activeObjects[i].sendToBack();
+            objectsId.push(activeObjects[i].id);
+        }
+    }
+    connection.invoke("MoveObjectsStack", JSON.stringify(objectsId), frontOrBack, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
+/*
+ * Zobrazení kontextového menu
+ */
+function contextMenuShowed(opt) {
+    let activeObjects = canvas.getActiveObjects();
+    opt.items.toFront.disabled = !(activeObjects.length > 0);
+    opt.items.toBack.disabled = !(activeObjects.length > 0);
+    opt.items.removeObj.disabled = !(activeObjects.length > 0);
+}
 
 /**
  * Přepnutí režimu kreslení
@@ -305,26 +382,24 @@ $("#color-picker").on("move.spectrum", function (e, color) {
         for (let i = 0; i < activeObjects.length; i++) {
             let undoEntry;
             if (activeObjects[i].get("type") == "path") {
-                undoEntry = { id: activeObjects[i].id, propertyType: "stroke", "color": activeObjects[i].stroke };
+                undoEntry = { id: activeObjects[i].id, "stroke": activeObjects[i].stroke };
                 activeObjects[i].set("stroke", changedColor);
                 jsonData[activeObjects[i].id] = {
-                    "propertyType": "stroke",
-                    "color": changedColor,
+                    "stroke": changedColor,
                 };
             }
             else {
-                undoEntry = { id: activeObjects[i].id, propertyType: "fill", "color": activeObjects[i].fill };
+                undoEntry = { id: activeObjects[i].id, "fill": activeObjects[i].fill };
                 activeObjects[i].set("fill", changedColor);
                 jsonData[activeObjects[i].id] = {
-                    "propertyType": "fill",
-                    "color": changedColor,
+                    "fill": changedColor,
                 };
             }
             groupUndoEntries.push(undoEntry);
         }
         undoStack.push({ action: "colorChanged", objects: groupUndoEntries });
         canvas.requestRenderAll();
-        connection.invoke("ChangeObjectsColor", JSON.stringify(jsonData), groupName).catch(function (err) {
+        connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
@@ -383,46 +458,16 @@ connection.on("deleteObjects", function (objectsId) {
 });
 
 /**
- * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
- */
-connection.on("changeTextObject", function (objectId, updatedText) {
-    updatedTextObj = canvas.getObjects().find(obj => {return obj.id === objectId})
-    updatedTextObj.text = updatedText;
-    updatedTextObj.setCoords();
-    canvas.requestRenderAll();
-});
-
-/**
  * Přikaz ze serveru k překreslení modifikovaných objektů
  */
 connection.on("modifyObjects", function (jsonData) {
-    let resizedObjects = JSON.parse(jsonData);
-    objects = canvas.getObjects();
-    for (let i = 0; i < objects.length; i++) {
-        if (objects[i].id in resizedObjects) {
-            objects[i].set({
-                top: resizedObjects[objects[i].id]["top"],
-                left: resizedObjects[objects[i].id]["left"],
-                angle: resizedObjects[objects[i].id]["angle"],
-                scaleX: resizedObjects[objects[i].id]["scaleX"],
-                scaleY: resizedObjects[objects[i].id]["scaleY"],
-            });
-            objects[i].setCoords();
+    let modifiedObjects = JSON.parse(jsonData);
+    for (objectId in modifiedObjects) {
+        let canvasObj = canvas.getObjects().find(obj => { return obj.id === objectId });
+        for (objectProperty in modifiedObjects[objectId]) {
+            canvasObj.set(objectProperty, modifiedObjects[objectId][objectProperty]);
         }
-    }
-    canvas.requestRenderAll();
-});
-
-/**
- * Přikaz ze serveru k překreslení modifikovaných objektů
- */
-connection.on("changeObjectsColor", function (jsonData) {
-    let changedColorObject = JSON.parse(jsonData);
-    objects = canvas.getObjects();
-    for (let i = 0; i < objects.length; i++) {
-        if (objects[i].id in changedColorObject) {
-            objects[i].set(changedColorObject[objects[i].id]["propertyType"], changedColorObject[objects[i].id]["color"]);
-        }
+        canvasObj.setCoords();
     }
     canvas.requestRenderAll();
 });
@@ -435,6 +480,28 @@ connection.on("importImage", function (imageAddress, guid) {
         myImg.id = guid;
         canvas.add(myImg);
     });
+});
+
+/**
+ * Příkaz se serveru k přesunutí objektů do horní nebo spodní vrstvy canvasu
+ */
+connection.on("moveObjectsStack", function (objectsId, frontOrBack) {
+    var selectedObjects = JSON.parse(objectsId);
+    let objects = canvas.getObjects();
+    if (frontOrBack == "front") {
+        for (let i = 0; i < objects.length; i++) {
+            if (selectedObjects.includes(objects[i].id)) {
+                objects[i].bringToFront();
+            }
+        }
+    }
+    else {
+        for (let i = 0; i < objects.length; i++) {
+            if (selectedObjects.includes(objects[i].id)) {
+                objects[i].sendToBack();
+            }
+        }
+    }
 });
 
 /**
@@ -475,9 +542,11 @@ canvas.on("text:changed", function (e) {
         });
     }
     else {
-        let updatedTextObj = canvas.getObjects().find(obj => { return obj.id === e.target.id})
-        //let addedChar = updatedTextObj.text.slice(-1);
-        connection.invoke("ChangeTextObject", e.target.id, updatedTextObj.text, groupName).catch(function (err) {
+        let updatedTextObj = canvas.getObjects().find(obj => { return obj.id === e.target.id });
+        let jsonData = {
+            [updatedTextObj.id] : { "text": updatedTextObj.text}
+        };
+        connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
             return console.error(err.toString());
         });
     }
@@ -620,11 +689,12 @@ canvas.on("object:added", function (e) {
  */
 canvas.on({
     "selection:created": updateColorpickerValue,
-    "selection:updated": updateColorpickerValue
+    "selection:updated": updateColorpickerValue,
+    "selection:cleared": removeEmptyTextObject
 });
 
 function updateColorpickerValue(e) {
-    selectedObjects = e.selected;
+    let selectedObjects = e.selected;
     if (selectedObjects.length == 1) {
         let color;
         if (selectedObjects[0].get("type") == "path") {
@@ -635,6 +705,13 @@ function updateColorpickerValue(e) {
         }
         $("#color-picker").spectrum("set", color);
         canvas.freeDrawingBrush.color = color;
+    }
+}
+
+function removeEmptyTextObject(e) {
+    let selectedObjects = e.deselected;
+    if (selectedObjects[0].text == "") {
+        canvas.remove(selectedObjects[0]);
     }
 }
 
@@ -812,7 +889,10 @@ function undoRedoTextChange(undoOrRedo, stackObject) {
     else {
         undoStack.push({ action: "textChanged", objects: [{ id: canvasObj.id, text: objTempText }] });
     }
-    connection.invoke("ChangeTextObject", canvasObj.id, canvasObj.text, groupName).catch(function (err) {
+    let jsonData = {
+        [canvasObj.id]: { "text": canvasObj.text }
+    };
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }
@@ -850,15 +930,14 @@ function undoRedoColorChange(undoOrRedo, stackObjects) {
     let jsonData = {};
     for (let i = 0; i < stackObjects.length; i++) {
         let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
+        let propertyType = Object.keys(stackObjects[i])[1];
         groupEntries.push({
             id: canvasObj.id,
-            propertyType: stackObjects[i].propertyType,
-            "color": stackObjects[i].propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
+            [propertyType]: propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
         });
-        canvasObj.set(stackObjects[i].propertyType, stackObjects[i].color);
+        canvasObj.set(propertyType, stackObjects[i][propertyType]);
         jsonData[canvasObj.id] = {
-            "propertyType": stackObjects[i].propertyType,
-            "color": stackObjects[i].propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
+            [propertyType]: propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
         };
     }
     if (undoOrRedo == "undo") {
@@ -867,7 +946,7 @@ function undoRedoColorChange(undoOrRedo, stackObjects) {
     else {
         undoStack.push({ action: "colorChanged", objects: groupEntries });
     }
-    connection.invoke("ChangeObjectsColor", JSON.stringify(jsonData), groupName).catch(function (err) {
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }
@@ -946,7 +1025,7 @@ function copyObjects() {
  * Provede akci v závislosti na stisknutých tlačítkách
  */
 $("html").keyup(function (e) {
-    //CTRL + DELETE
+    //DELETE
     if (e.keyCode == 46) {
         deleteActiveObjects();
     }

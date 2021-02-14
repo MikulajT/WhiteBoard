@@ -3,6 +3,7 @@
     ViewData["Title"] = "Home Page";
 }
 <link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
+<link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
 <style>
     @@media only screen and (max-width: 1450px) {
         #sketchpadapp {
@@ -98,6 +99,15 @@
         overflow: hidden;
     }
 
+    div {
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
+    }
+
     #canvas {
         background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
         background-size: 15px 15px;
@@ -113,8 +123,9 @@
     }
 
     .dropdown-menu {
-        top:99% !important;
+        top: 99% !important;
     }
+
     .navbar {
         padding: .1rem 1rem !important;
     }
@@ -137,103 +148,103 @@
                         <input type="file" id="projectUpload" accept="application/JSON" onclick="this.value=null;" hidden />
                         <!--<div class="dropdown-divider"></div> -->
                     </div>
-                    </li>
-                </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div id="sketchpadapp">
+        <div>
+            <button type="submit" class="button" id="drag_button" onclick="changeDragMode()">
+                <img src="~/resources/grab.png">
+            </button>
+            <div class="divider"></div>
+
+            <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
+                <img src="~/resources/draw.png">
+            </button>
+            <div class="divider"></div>
+
+            <button type="submit" class="button" id="text_button" onclick="changetextMode()">
+                <img src="~/resources/text.png">
+            </button>
+            <div class="divider"></div>
+
+            <input id="color-picker" type="color" value="#000000" />
+            <div class="divider" id="visible"></div>
+            <div class="hr"><hr></div>
+
+            <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
+                <img src="~/resources/image.png">
+            </button>
+            <input type="file" id="imageUpload" accept="image/*" hidden />
+            <div class="divider"></div>
+
+            <button type="submit" class="button" onclick="exportToImage();">
+                <img src="~/resources/export.png">
+            </button>
+            <div class="divider"></div>
+
+            <button type="submit" class="button" data-toggle="modal" data-target="#clear">
+                <img src="~/resources/clear.png">
+            </button>
+            <div class="divider" id="visible"></div>
+            <div class="hr"><hr></div>
+
+            <button type="submit" class="button" data-toggle="modal" data-target="#link">
+                <img src="~/resources/share.png">
+            </button>
+        </div>
+    </div>
+    <canvas id="canvas" class="context-menu"></canvas>
+</div>
+<!-- Modal window - copy link-->
+<div class="modal fade" id="link" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    Share this board
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-        </nav>
-
-        <div id="sketchpadapp">
-            <div>
-                <button type="submit" class="button" id="drag_button" onclick="changeDragMode()">
-                    <img src="~/resources/grab.png">
-                </button>
-                <div class="divider"></div>
-
-                <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
-                    <img src="~/resources/draw.png">
-                </button>
-                <div class="divider"></div>
-
-                <button type="submit" class="button" id="text_button" onclick="changetextMode()">
-                    <img src="~/resources/text.png">
-                </button>
-                <div class="divider"></div>
-
-                <input id="color-picker" type="color" value="#000000" />
-                <div class="divider" id="visible"></div>
-                <div class="hr"><hr></div>
-
-                <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
-                    <img src="~/resources/image.png">
-                </button>
-                <input type="file" id="imageUpload" accept="image/*" hidden />
-                <div class="divider"></div>
-
-                <button type="submit" class="button" onclick="exportToImage();">
-                    <img src="~/resources/export.png">
-                </button>
-                <div class="divider"></div>
-
-                <button type="submit" class="button" data-toggle="modal" data-target="#clear">
-                    <img src="~/resources/clear.png">
-                </button>
-                <div class="divider" id="visible"></div>
-                <div class="hr"><hr></div>
-
-                <button type="submit" class="button" data-toggle="modal" data-target="#link">
-                    <img src="~/resources/share.png">
-                </button>         
+            <div class="modal-body">
+                <div>
+                    <input id="input_link" type="text" class="form-control" />
+                    <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()">
+                </div>
             </div>
         </div>
-
-        <canvas id="canvas"></canvas>
     </div>
+</div>
 
-    <!-- Modal window - copy link-->
-                        <div class="modal fade" id="link" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">
-                                            Share this board
-                                        </h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div>
-                                            <input id="input_link" type="text" class="form-control" />
-                                            <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<!-- Modal window - clear board -->
+<div class="modal fade" id="clear" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    Clear the canvas?
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <input class="btn btn-primary" class="close" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                        <!-- Modal window - clear board -->
-                        <div class="modal fade" id="clear" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">
-                                            Clear the canvas?
-                                        </h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div>
-                                            <input class="btn btn-primary" class="close" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <script src="~/lib/jquery/dist/jquery.js"></script>
-                        <script src="~/lib/signalr/dist/browser/signalr.js"></script>
-                        <script src="~/lib/fabricjs/fabric.min.js"></script>
-                        <script defer src="~/js/spectrum.js"></script>
-                        <script defer src="~/js/draw.js"></script>
+<script src="~/lib/jquery/dist/jquery.js"></script>
+<script src="~/lib/signalr/dist/browser/signalr.js"></script>
+<script src="~/lib/fabricjs/fabric.min.js"></script>
+<script defer src="~/js/jquery.contextMenu.js"></script>
+<script defer src="~/js/jquery.ui.position.min.js"></script>
+<script defer src="~/js/spectrum.js"></script>
+<script defer src="~/js/draw.js"></script>

@@ -48,14 +48,6 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaz ke změně textu již existujícího objektu
-        /// </summary>
-        public async Task ChangeTextObject(string objectId, string addedChar, string groupName)
-        {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeTextObject", objectId, addedChar);
-        }
-
-        /// <summary>
         /// Příkaz ke změně pozice objektů
         /// </summary>
         public async Task ModifyObjects(string jsonData, string groupName)
@@ -64,11 +56,11 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaz ke změně barvy objektů
+        /// Příkaz k přesunutí objektů do horní nebo spodní vrstvy canvasu
         /// </summary>
-        public async Task ChangeObjectsColor(string jsonData, string groupName)
+        public async Task MoveObjectsStack(string objectsId, string frontOrBack, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeObjectsColor", jsonData);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("moveObjectsStack", objectsId, frontOrBack);
         }
     }
 }
