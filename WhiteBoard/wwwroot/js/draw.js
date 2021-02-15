@@ -5,10 +5,14 @@ let textMode = false;
 let textEdit = false;
 let drawingMode = false;
 let dragMode = false;
+let straightLineMode = false;
+
+let isButtonDown = false; 
 
 let undoStack = [];
 let redoStack = [];
 let clonedObjects;
+let straightLine;
 
 /**
  * Vytvoření spojení se serverem
@@ -44,7 +48,7 @@ fabric.Image.prototype.toObject = (function (toObject) {
 /**
  * Inicializace ovládacího prvku pro výběr barvy
  */
-$("#color-picker").spectrum({
+$("#global-color-picker").spectrum({
     showAlpha: false,
     allowEmpty: false,
     showButtons: false,
@@ -128,12 +132,35 @@ function changeDrawingMode() {
 
         if (textMode) changetextMode();
         if (dragMode) changeDragMode();
+        if (straightLineMode) changeStraightLineMode();
     }
     else {
         drawingMode = false;
         canvas.isDrawingMode = false;
         canvas.defaultCursor = "default";
         document.getElementById("draw_button").style.backgroundColor = "white";      
+    }
+}
+
+function changeStraightLineMode() {
+    if (!straightLineMode) {
+        document.getElementById("straight_line_button").style.backgroundColor = "#dddddd";
+        canvas.selection = false;
+        straightLineMode = true;
+
+        if (drawingMode) changeDrawingMode();
+        if (textMode) changetextMode();
+        if (dragMode) changeDragMode();
+    }
+    else {
+        canvas.forEachObject(function (object) {
+            object.selectable = true;
+            object.setCoords()
+        })
+        straightLineMode = false;
+        canvas.selection = true;
+        canvas.defaultCursor = "default";
+        document.getElementById("straight_line_button").style.backgroundColor = "white";
     }
 }
 
@@ -148,6 +175,7 @@ function changetextMode() {
 
         if (drawingMode) changeDrawingMode();
         if (dragMode) changeDragMode();
+        if (straightLineMode) changeStraightLineMode();
     }
     else {
         textMode = false;
@@ -168,6 +196,7 @@ function changeDragMode() {
 
         if (drawingMode) changeDrawingMode();
         if (textMode) changetextMode();
+        if (straightLineMode) changeStraightLineMode();
         for (let i = 0; i < objects.length; i++) {
             objects[i].selectable = false;
             objects[i].hoverCursor = "grab";
@@ -195,6 +224,16 @@ canvas.on("mouse:down", function (opt) {
         this.lastPosX = evt.clientX;
         this.lastPosY = evt.clientY;
     }
+    else if (straightLineMode) {
+        isButtonDown = true;
+        let pointer = canvas.getPointer(opt.e);
+        let points = [pointer.x, pointer.y, pointer.x, pointer.y];
+        straightLine = new fabric.Line(points, {
+            strokeWidth: 1,
+            stroke: $("#global-color-picker").val()
+        });
+        canvas.add(straightLine);
+    }
 });
 canvas.on("mouse:move", function (opt) {
     if (this.isDragging) {
@@ -206,6 +245,12 @@ canvas.on("mouse:move", function (opt) {
         this.lastPosX = e.clientX;
         this.lastPosY = e.clientY;
     }
+    else if (straightLineMode) {
+        if (!isButtonDown) return;
+        let pointer = canvas.getPointer(opt.e);
+        straightLine.set({ x2: pointer.x, y2: pointer.y });
+        canvas.renderAll();
+    }
 });
 canvas.on("mouse:up", function (opt) {
     // on mouse up we want to recalculate new interaction
@@ -213,6 +258,15 @@ canvas.on("mouse:up", function (opt) {
     this.setViewportTransform(this.viewportTransform);
     this.isDragging = false;
     this.selection = true;
+    if (straightLineMode) {
+        isButtonDown = false;
+        canvas.forEachObject(function (object) {
+            object.selectable = false;
+            object.setCoords()
+        })
+        canvas.selection = false;
+        pathCreated(straightLine);
+    }
 });
 
 /**
@@ -331,7 +385,7 @@ $(document).on('change', '#projectUpload', function (event) {
 canvas.on("mouse:down", function (event) {
     if (textMode && !textEdit) {
         let pointer = canvas.getPointer(event.e);
-        let color = $("#color-picker").val();
+        let color = $("#global-color-picker").val();
         let iText = new fabric.IText("", {
             left: pointer.x,
             top: pointer.y,
@@ -372,7 +426,7 @@ canvas.on("text:editing:exited", function (e) {
 /**
  * Event - změní barvu štětce případně i oznažených objektů
  */
-$("#color-picker").on("move.spectrum", function (e, color) {
+$("#global-color-picker").on("move.spectrum", function (e, color) {
     let changedColor = color.toHexString();
     canvas.freeDrawingBrush.color = changedColor;
     let activeObjects = canvas.getActiveObjects();
@@ -381,7 +435,8 @@ $("#color-picker").on("move.spectrum", function (e, color) {
         let groupUndoEntries = [];
         for (let i = 0; i < activeObjects.length; i++) {
             let undoEntry;
-            if (activeObjects[i].get("type") == "path") {
+            if (activeObjects[i].get("type") == "path" ||
+                activeObjects[i].get("type") == "line") {
                 undoEntry = { id: activeObjects[i].id, "stroke": activeObjects[i].stroke };
                 activeObjects[i].set("stroke", changedColor);
                 jsonData[activeObjects[i].id] = {
@@ -519,16 +574,22 @@ function tellServerToClear() {
 /**
  * Event - vytvoření čáry
  */
-canvas.on("path:created", function (e) {
-    let objWithId = e.path;
+canvas.on({ "path:created": pathCreated });
+
+/**
+ * Odešle vytvořenou čáru na server
+ * @param {any} e
+ */
+function pathCreated(e) {
+    let objWithId = e.path ? e.path : e;
     objWithId.id = generateGUID();
     let undoEntry = { action: "added", objects: [{ id: objWithId.id }] };
     undoStack.push(undoEntry);
-    objWithId = e.path.toJSON(["id"]);
+    objWithId = objWithId.toJSON(["id"]);
     connection.invoke("AddObjects", JSON.stringify([objWithId]), groupName).catch(function (err) {
         return console.error(err.toString());
     });
-});
+}
 
 /**
  * Event - Změna vkládaného textu
@@ -697,13 +758,14 @@ function updateColorpickerValue(e) {
     let selectedObjects = e.selected;
     if (selectedObjects.length == 1) {
         let color;
-        if (selectedObjects[0].get("type") == "path") {
+        if (selectedObjects[0].get("type") == "path" ||
+            selectedObjects[0].get("type") == "line") {
             color = selectedObjects[0].stroke;
         }
         else {
             color = selectedObjects[0].fill;
         }
-        $("#color-picker").spectrum("set", color);
+        $("#global-color-picker").spectrum("set", color);
         canvas.freeDrawingBrush.color = color;
     }
 }
