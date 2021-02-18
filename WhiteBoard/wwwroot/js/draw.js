@@ -7,7 +7,7 @@ let drawingMode = false;
 let dragMode = false;
 let straightLineMode = false;
 
-let isButtonDown = false; 
+let isButtonDown = false;
 
 let undoStack = [];
 let redoStack = [];
@@ -76,6 +76,29 @@ $.contextMenu({
             }
         },
         "sep1": "---------",
+        selectAll: {
+            name: "Select all",
+            callback: function () {
+                selectAllObjects();
+            }
+        },
+        copy: {
+            name: "Copy",
+            disabled: true,
+            icon: "copy",
+            callback: function () {
+                copyObjects();
+            }
+        },
+        paste: {
+            name: "Paste",
+            disabled: true,
+            icon: "paste",
+            callback: function () {
+                pasteObjects();
+            }
+        },
+        "sep2": "---------",
         removeObj: {
             name: "Remove",
             disabled: true,
@@ -119,6 +142,9 @@ function contextMenuShowed(opt) {
     opt.items.toFront.disabled = !(activeObjects.length > 0);
     opt.items.toBack.disabled = !(activeObjects.length > 0);
     opt.items.removeObj.disabled = !(activeObjects.length > 0);
+    opt.items.copy.disabled = !(activeObjects.length > 0);
+    if (clonedObjects) opt.items.paste.disabled = false;
+    else opt.items.paste.disabled = true;
 }
 
 /**
@@ -138,7 +164,7 @@ function changeDrawingMode() {
         drawingMode = false;
         canvas.isDrawingMode = false;
         canvas.defaultCursor = "default";
-        document.getElementById("draw_button").style.backgroundColor = "white";      
+        document.getElementById("draw_button").style.backgroundColor = "white";
     }
 }
 
@@ -180,7 +206,7 @@ function changetextMode() {
     else {
         textMode = false;
         canvas.defaultCursor = "default";
-        document.getElementById("text_button").style.backgroundColor = "white";       
+        document.getElementById("text_button").style.backgroundColor = "white";
     }
 }
 
@@ -200,7 +226,7 @@ function changeDragMode() {
         for (let i = 0; i < objects.length; i++) {
             objects[i].selectable = false;
             objects[i].hoverCursor = "grab";
-        }       
+        }
     }
     else {
         dragMode = false;
@@ -209,7 +235,7 @@ function changeDragMode() {
         for (let i = 0; i < objects.length; i++) {
             objects[i].selectable = true;
             objects[i].hoverCursor = null;
-        }  
+        }
     }
 }
 
@@ -343,7 +369,7 @@ function exportToImage() {
     $("<a>").attr({
         href: canvas.toDataURL({
             format: "png",
-            width: sel.width + Math.abs(sel.left), 
+            width: sel.width + Math.abs(sel.left),
             height: sel.height + Math.abs(sel.top),
             left: sel.left < 0 ? sel.left : null,
             top: sel.top < 0 ? sel.left : null,
@@ -465,8 +491,7 @@ $("#global-color-picker").on("move.spectrum", function (e, color) {
  */
 document.getElementById("input_link").value = window.location.href;
 
-function copyURL()
-{
+function copyURL() {
     let copyText = document.getElementById("input_link");
     copyText.select();
     document.execCommand("copy");
@@ -505,11 +530,11 @@ connection.on("addObjects", function (jsonObjects) {
 connection.on("deleteObjects", function (objectsId) {
     var removedObjects = JSON.parse(objectsId);
     let objects = canvas.getObjects();
-    for (let i = objects.length-1; i > -1; i--) {
+    for (let i = objects.length - 1; i > -1; i--) {
         if (removedObjects.includes(objects[i].id)) {
             canvas.remove(objects[i]);
         }
-    }  
+    }
 });
 
 /**
@@ -563,7 +588,7 @@ connection.on("moveObjectsStack", function (objectsId, frontOrBack) {
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  */
 function tellServerToClear() {
-    let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id']))};
+    let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id'])) };
     undoStack.push(undoEntry);
     canvas.clear();
     connection.invoke("ClearCanvas", groupName).catch(function (err) {
@@ -605,7 +630,7 @@ canvas.on("text:changed", function (e) {
     else {
         let updatedTextObj = canvas.getObjects().find(obj => { return obj.id === e.target.id });
         let jsonData = {
-            [updatedTextObj.id] : { "text": updatedTextObj.text}
+            [updatedTextObj.id]: { "text": updatedTextObj.text }
         };
         connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
             return console.error(err.toString());
@@ -814,25 +839,25 @@ function redo() {
     if (redoStack.length > 0) {
         let redoEntry = redoStack.pop();
         switch (redoEntry.action) {
-                case "added":
-                    undoRedoObjectsInsertion("redo", redoEntry.objects);
-                    break;
-                case "removed":
-                    undoRedoObjectsRemoval("redo", redoEntry.objects);
-                    break;
-                case "modified":
-                    undoRedoObjectsModification("redo", redoEntry.objects);
-                    break;
-                case "textChanged":
-                    undoRedoTextChange("redo", redoEntry.objects);
-                    break;
-                case "canvasCleared":
-                    undoRedoCanvasClear("redo");
-                    break;
-                case "colorChanged":
-                    undoRedoColorChange("redo", redoEntry.objects);
-                    break;
-            }
+            case "added":
+                undoRedoObjectsInsertion("redo", redoEntry.objects);
+                break;
+            case "removed":
+                undoRedoObjectsRemoval("redo", redoEntry.objects);
+                break;
+            case "modified":
+                undoRedoObjectsModification("redo", redoEntry.objects);
+                break;
+            case "textChanged":
+                undoRedoTextChange("redo", redoEntry.objects);
+                break;
+            case "canvasCleared":
+                undoRedoCanvasClear("redo");
+                break;
+            case "colorChanged":
+                undoRedoColorChange("redo", redoEntry.objects);
+                break;
+        }
         canvas.requestRenderAll();
     }
 }
@@ -1032,56 +1057,58 @@ function copyObjects() {
     if (canvas.getActiveObject()) {
         canvas.getActiveObject().clone(function (cloned) {
             clonedObjects = cloned;
-        });
+        },
+            ["id"]);
     }
 }
 
 /**
- * TODO - nefunguje správně, na server odesílá špatné pozice objektů
+ * Vloží zkopírované objekty do canvasu
  * */
-//function pasteObjects() {
-//    clonedObjects.clone(function (clonedObj) {
-//        let jsonObjects = [];
-//        canvas.discardActiveObject();
-//        clonedObj.set({
-//            left: clonedObj.left + 50,
-//            top: clonedObj.top + 50,
-//            evented: true,
-//        });
-//        if (clonedObj.type === "activeSelection") {
-//            clonedObj.canvas = canvas;
-//            clonedObj.forEachObject(function (obj) {
-//                canvas.add(obj);
-//                obj.id = generateGUID();
-//                let point = new fabric.Point(obj.left, obj.top);
-//                let transform = obj.calcTransformMatrix();
-//                let actualCoordinates = fabric.util.transformPoint(point, transform);
-//                let lastTop = obj.top;
-//                let lastLeft = obj.left;
-//                obj.set({
-//                    top: actualCoordinates.y,
-//                    left: actualCoordinates.x
-//                });
-//                jsonObjects.push(obj.toJSON(["id"]));
-//                obj.top = lastTop;
-//                obj.left = lastLeft;
-//            });
-//            clonedObj.setCoords();
-//        } else {
-//            canvas.add(clonedObj);
-//            clonedObj.id = generateGUID();
-//            jsonObjects.push(clonedObj.toJSON(["id"]));
+function pasteObjects() {
+    let jsonObjects = [];
+    canvas.discardActiveObject();
+    clonedObjects.set({
+        left: clonedObjects.left + 50,
+        top: clonedObjects.top + 50,
+        evented: true,
+    });
+    if (clonedObjects.type === "activeSelection") {
+        clonedObjects.canvas = canvas;
+        clonedObjects.forEachObject(function (obj) {
+            let originalObject = canvas.getObjects().find(canvasObj => { return canvasObj.id === obj.id });
+            let tempLeft = obj.left;
+            let tempTop = obj.top;
+            canvas.add(obj);
+            obj.id = generateGUID();
+            obj.set({
+                left: originalObject.left + 50,
+                top: originalObject.top + 50
+            });
+            jsonObjects.push(obj.toJSON(["id"]));
+            obj.set({
+                left: tempLeft,
+                top: tempTop
+            });
+        });
+        clonedObjects.setCoords();
+    } else {
+        canvas.add(clonedObjects);
+        clonedObjects.id = generateGUID();
+        jsonObjects.push(clonedObjects.toJSON(["id"]));
 
-//        }
-//        connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
-//            return console.error(err.toString());
-//        });
-//        clonedObjects.top += 50;
-//        clonedObjects.left += 50;
-//        canvas.setActiveObject(clonedObj);
-//        canvas.requestRenderAll();
-//    });
-//}
+    }
+    var json = JSON.stringify(jsonObjects)
+    connection.invoke("AddObjects", json, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+    canvas.setActiveObject(clonedObjects);
+    canvas.requestRenderAll();
+    clonedObjects.clone(function (cloned) {
+        clonedObjects = cloned;
+    },
+        ["id"]);
+}
 
 /**
  * Provede akci v závislosti na stisknutých tlačítkách
@@ -1108,7 +1135,7 @@ $("html").keyup(function (e) {
         copyObjects();
     }
     //CTRL + V
-    //else if ((e.keyCode == 86) && e.ctrlKey) {
-    //    pasteObjects();
-    //}
+    else if ((e.keyCode == 86) && e.ctrlKey) {
+        pasteObjects();
+    }
 });
