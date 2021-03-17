@@ -490,6 +490,7 @@ $("#global-color-picker").on("move.spectrum", function (e, color) {
  * Zkopirovani URL do schranky
  */
 document.getElementById("input_link").value = window.location.href;
+document.getElementById("Link").value = window.location.href;
 
 function copyURL() {
     let copyText = document.getElementById("input_link");

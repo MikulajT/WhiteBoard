@@ -3,10 +3,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using MimeKit;
 using WhiteBoard.Hubs;
 using WhiteBoard.Models;
 
@@ -62,6 +65,30 @@ namespace WhiteBoard.Controllers
                     System.IO.File.Delete(fileInfo.FullName);
                 }
             }
+        }
+
+        public IActionResult SendEmail(EmailForm form)
+        {
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress("whiteboard@vsb.cz"));
+            message.To.Add(new MailboxAddress("marekbauer@centrum.cz"));
+            message.Subject = "Invite to WhiteBoard session!";
+            message.Body = new TextPart("html")
+            {
+                Text = "<h1>Join whiteboard session here: </h1> <br />" + 
+                        form.Link
+            };
+            
+            //TODO pridat adresu serveru a prihlasovaci udaje po zarizeni hostingu
+            using(var smtp = new SmtpClient())
+            {
+                //smtp.Connect();
+                //smtp.Authenticate();
+                //smtp.Send(message);
+                //smtp.Disconnect(true);
+            }
+
+            return Redirect(form.Link);
         }
     }
 }

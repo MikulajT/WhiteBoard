@@ -2,134 +2,11 @@
     Layout = "_BoardLayout";
     ViewData["Title"] = "Home Page";
 }
+@model WhiteBoard.Models.EmailForm
 <link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
 <link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
-<style>
-    @@media only screen and (max-width: 1450px) {
-        #sketchpadapp {
-            position: absolute;
-            top: 75px;
-            z-index: 999;
-            width: 59px;
-            left: 16px;
-            background-color: white;
-            border-radius: 5px;
-            padding: 5px;
-            border: solid 2px #000000;
-        }
+<link rel="stylesheet" type="text/css" href="~/css/board.css">
 
-        .button {
-            border: none;
-            padding: 5px;
-            border-radius: 5px;
-            background-color: white;
-        }
-
-        #drawing-color {
-            margin: 5px;
-            display: block;
-            width: 35px;
-            height: 35px;
-        }
-
-        .hr {
-            margin-top: -15px;
-            padding: 5px;
-            display: block;
-        }
-
-        .divider {
-            display: inline-block;
-            height: 65%;
-            width: 1px;
-            margin: 0 15px;
-        }
-    }
-
-    @@media only screen and (min-width: 1450px) {
-        #sketchpadapp {
-            display: grid;
-            background-color: white;
-            border-radius: 5px;
-            padding: 5px;
-            border: solid 2px #000000;
-            position: absolute;
-            top: 75px;
-            z-index: 999;
-            width: 50%;
-            margin-left: auto;
-            margin-right: auto;
-            left: 0;
-            right: 0;
-            text-align: center;
-        }
-
-        .button {
-            display: inline-grid;
-            border: none;
-            padding: 5px;
-            border-radius: 5px;
-            background-color: white;
-        }
-
-        #drawing-color {
-            display: inline-grid;
-            width: 35px;
-            height: 35px;
-        }
-
-        .divider {
-            display: inline-block;
-            height: 65%;
-            width: 1px;
-            margin: 0 15px;
-        }
-
-        #visible {
-            background-color: #e0e0e0;
-            margin: 0 30px;
-        }
-
-        .hr {
-            display: none;
-        }
-    }
-
-    body {
-        overflow: hidden;
-    }
-
-    div {
-        -webkit-touch-callout: none; /* iOS Safari */
-        -webkit-user-select: none; /* Safari */
-        -khtml-user-select: none; /* Konqueror HTML */
-        -moz-user-select: none; /* Old versions of Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-        user-select: none; /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
-    }
-
-    #canvas {
-        background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
-        background-size: 15px 15px;
-    }
-
-    .button:focus {
-        outline: none;
-    }
-
-    .button img {
-        width: 35px;
-        height: 35px;
-    }
-
-    .dropdown-menu {
-        top: 99% !important;
-    }
-
-    .navbar {
-        padding: .1rem 1rem !important;
-    }
-</style>
 <div>
     <nav class="navbar navbar-expand navbar-light bg-white">
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -201,8 +78,10 @@
             </button>
         </div>
     </div>
+
     <canvas id="canvas" class="context-menu"></canvas>
 </div>
+
 <!-- Modal window - copy link-->
 <div class="modal fade" id="link" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -217,39 +96,63 @@
             </div>
             <div class="modal-body">
                 <div>
-                    <input id="input_link" type="text" class="form-control" />
-                    <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()">
+                    <ul class="nav nav-tabs">
+                        <li class='nav-item'>
+                            <a class='nav-link active' data-toggle='tab' href='#s1'>Link</a>
+                        </li>
+                        <li class='nav-item'>
+                            <a class='nav-link ' data-toggle='tab' href='#s2'>Email</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <div class='tab-pane container fade in show active' id='s1'>
+                            <input id="input_link" type="text" class="form-control" />
+                            <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()" />
+                        </div>
+                        <div class='tab-pane container fade' id='s2'>
+                            @using (Html.BeginForm("SendEmail", "Room"))
+                            {
+                                <div class="form-group">
+                                    @Html.HiddenFor(m => m.Link)
+                                    @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "example@mail.com" })
+                                </div>
+                                
+                                <button class="btn btn-primary" type="submit">Send</button>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Modal window - clear board -->
-<div class="modal fade" id="clear" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">
-                    Clear the canvas?
-                </h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div>
-                    <input class="btn btn-primary" class="close" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
+        <!-- Modal window - clear board -->
+        <div class="modal fade" id="clear" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">
+                            Clear the canvas?
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div>
+                            <input class="btn btn-primary" class="close" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<script src="~/lib/jquery/dist/jquery.js"></script>
-<script src="~/lib/signalr/dist/browser/signalr.js"></script>
-<script src="~/lib/fabricjs/fabric.min.js"></script>
-<script defer src="~/js/jquery.contextMenu.js"></script>
-<script defer src="~/js/jquery.ui.position.min.js"></script>
-<script defer src="~/js/spectrum.js"></script>
-<script defer src="~/js/draw.js"></script>
+        <script src="~/lib/jquery/dist/jquery.js"></script>
+        <script src="~/lib/signalr/dist/browser/signalr.js"></script>
+        <script src="~/lib/fabricjs/fabric.min.js"></script>
+        <script defer src="~/js/jquery.contextMenu.js"></script>
+        <script defer src="~/js/jquery.ui.position.min.js"></script>
+        <script defer src="~/js/spectrum.js"></script>
+        <script defer src="~/js/draw.js"></script>
+        <script defer src="~/js/tabs.js"></script>
