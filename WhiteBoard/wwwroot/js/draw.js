@@ -13,6 +13,7 @@ let undoStack = [];
 let redoStack = [];
 let clonedObjects;
 let straightLine;
+let currentFont = "Helvetica";
 
 /**
  * Vytvoření spojení se serverem
@@ -112,6 +113,82 @@ $.contextMenu({
 });
 
 /*
+ * Inicializace font pickeru
+ */
+$('#global-font-picker').fontselect({
+    placeholder: 'Select a font',
+    placeholderSearch: 'Search...',
+    lookahead: 2,
+    searchable: true,
+    systemFonts: ['Helvetica', 'Comic+Sans+MS', 'Verdana', 'Impact', 'Calibri', 'Quicksand'],
+    googleFonts: []
+}).on('change', function () {
+    changeGlobalFont(this.value);
+});
+$('#global-font-picker').trigger('setFont', 'Helvetica');
+
+$('#object-font-picker').fontselect({
+    placeholder: 'Select a font',
+    placeholderSearch: 'Search...',
+    lookahead: 2,
+    searchable: true,
+    systemFonts: ['Helvetica', 'Comic+Sans+MS', 'Verdana', 'Impact', 'Calibri', 'Quicksand'],
+    googleFonts: []
+}).on('change', function () {
+    changeObjectFont(this.value);
+});
+
+/*
+ * Změní aktuálně zvolený font 
+ */
+function changeGlobalFont(fontValue) {
+    currentFont = fontValue;
+}
+
+/*
+ * Změní font textového objektu 
+ */
+function changeObjectFont(fontValue) {
+    let activeObject = canvas.getActiveObjects()[0];
+    let jsonData = {};
+    activeObject.set("fontFamily", fontValue);
+    jsonData[activeObject.id] = {
+        "fontFamily": fontValue,
+    };
+    canvas.requestRenderAll();
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
+/*
+ * Změní velikost označeného objektu 
+ */ 
+$("#object-size").on("change", function () {
+    let activeObject = canvas.getActiveObjects()[0];
+    let jsonData = {};
+    if (activeObject.get("type") == "i-text") {
+        activeObject.set("fontSize", this.value * 4);
+        jsonData[activeObject.id] = {
+            "fontSize": activeObject.fontSize
+        };
+    }
+    else if (activeObject.get("type") == "path" ||
+        activeObject.get("type") == "line") {
+        activeObject.set("strokeWidth", parseInt(this.value));
+        jsonData[activeObject.id] = {
+            "strokeWidth": activeObject.strokeWidth
+        };
+    }
+    activeObject.setCoords();
+    canvas.requestRenderAll();
+    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+});
+
+
+/*
  * Přesune vybrané objekty do horní nebo spodní vrstvy canvasu
  */
 function moveObjectsStack(frontOrBack) {
@@ -208,6 +285,7 @@ function changetextMode() {
         canvas.defaultCursor = "default";
         document.getElementById("text_button").style.backgroundColor = "white";
     }
+    showTextMenu();
 }
 
 /**
@@ -236,6 +314,19 @@ function changeDragMode() {
             objects[i].selectable = true;
             objects[i].hoverCursor = null;
         }
+    }
+}
+
+/**
+ * Zobrazí nebo skryje detailní menu nástroje
+ */
+function showTextMenu() {
+    var textMenu = $("#tool-detail-menu");
+    if (textMenu.is(":hidden")) {
+        textMenu.show();
+    }
+    else {
+        textMenu.hide();
     }
 }
 
@@ -288,7 +379,7 @@ canvas.on("mouse:up", function (opt) {
         isButtonDown = false;
         canvas.forEachObject(function (object) {
             object.selectable = false;
-            object.setCoords()
+            object.setCoords();
         })
         canvas.selection = false;
         pathCreated(straightLine);
@@ -415,7 +506,7 @@ canvas.on("mouse:down", function (event) {
         let iText = new fabric.IText("", {
             left: pointer.x,
             top: pointer.y,
-            fontFamily: "Helvetica",
+            fontFamily: currentFont,
             fill: color,
             lineHeight: 1.1
         }
@@ -760,6 +851,7 @@ canvas.on("before:transform", function (e) {
     }
 });
 
+
 /**
  * Event - vložení objektu
  */
@@ -771,28 +863,91 @@ canvas.on("object:added", function (e) {
 });
 
 /**
- * Registrace eventů pro změnu barvy colorpickeru
+ * Registrace eventů - vytvoření, modifikování a odznačení výběru objektů
  */
 canvas.on({
-    "selection:created": updateColorpickerValue,
-    "selection:updated": updateColorpickerValue,
-    "selection:cleared": removeEmptyTextObject
+    "selection:created": selectionCreated,
+    "selection:updated": selectionCreated,
+    "selection:cleared": selectionCleared,
+    "mouse:down": mouseDown,
+    "mouse:up": mouseUp
 });
 
-function updateColorpickerValue(e) {
+function selectionCreated(e) {
     let selectedObjects = e.selected;
     if (selectedObjects.length == 1) {
-        let color;
-        if (selectedObjects[0].get("type") == "path" ||
-            selectedObjects[0].get("type") == "line") {
-            color = selectedObjects[0].stroke;
-        }
-        else {
-            color = selectedObjects[0].fill;
-        }
-        $("#global-color-picker").spectrum("set", color);
-        canvas.freeDrawingBrush.color = color;
+        updateColorpickerValue(selectedObjects[0]);
     }
+}
+
+function selectionUpdated(e) {
+    let selectedObjects = e.selected;
+    if (selectedObjects.length == 1) {
+        updateColorpickerValue(selectedObjects[0]);
+    }
+}
+
+function selectionCleared(e) {
+    removeEmptyTextObject(e);
+    let objectMenu = document.getElementById("object-menu");
+    objectMenu.style.visibility = "hidden";
+}
+
+function mouseDown(e) {
+    let activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length == 1) {
+        let objectMenu = document.getElementById("object-menu");
+        objectMenu.style.visibility = "hidden";
+    }
+}
+
+function mouseUp(e) {
+    let activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length == 1) {
+        if (activeObjects[0].get("type") == "i-text" &&
+            activeObjects[0].text == "") {
+            return;
+        }
+
+        if (activeObjects[0].get("type") == "i-text") {
+            document.getElementById("object-font-picker-container").style.display = "inline-block";
+            $('#object-font-picker').trigger('setFont', activeObjects[0].fontFamily);
+            $("#object-size").val(activeObjects[0].fontSize / 4);
+        }
+        else if (activeObjects[0].get("type") == "path" ||
+            activeObjects[0].get("type") == "line") {
+            document.getElementById("object-font-picker-container").style.display = "none";
+            $("#object-size").val(activeObjects[0].strokeWidth);
+        }
+        setObjectMenuPosition(activeObjects[0].oCoords);
+    }
+}
+
+function setObjectMenuPosition(oCoords) {
+    let maxYValue = 0;
+    for (const property in oCoords) {
+        if (oCoords[property].y > maxYValue) maxYValue = oCoords[property].y
+    }
+    let xPos = (oCoords.ml.x + oCoords.mr.x) / 2;
+    let objectMenu = document.getElementById("object-menu");
+    let objectMenuCoords = objectMenu.getBoundingClientRect();
+    objectMenu.style.visibility = "visible";
+    objectMenu.style.top = (maxYValue + 64) + "px";
+    objectMenu.style.left = (xPos - objectMenuCoords.width / 2) + "px";
+}
+
+
+function updateColorpickerValue(selectedObj) {
+    let color;
+    if (selectedObj.get("type") == "path" ||
+        selectedObj.get("type") == "line") {
+        color = selectedObj.stroke;
+    }
+    else {
+        color = selectedObj.fill;
+    }
+    $("#global-color-picker").spectrum("set", color);
+    canvas.freeDrawingBrush.color = color;
 }
 
 function removeEmptyTextObject(e) {
