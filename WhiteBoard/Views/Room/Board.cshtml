@@ -2,168 +2,12 @@
     Layout = "_BoardLayout";
     ViewData["Title"] = "Home Page";
 }
+@model WhiteBoard.Models.EmailForm
 <link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
 <link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
 <link rel="stylesheet" type="text/css" href="~/css/jquery.fontselect.css">
-<style>
-    @@media only screen and (max-width: 1450px) {
+<link rel="stylesheet" type="text/css" href="~/css/board.css">
 
-        .parent-menu {
-            position: absolute;
-            z-index: 1;
-            width: 59px;
-            background-color: white;
-            border-radius: 5px;
-            padding: 5px;
-        }
-
-        #tool-menu {
-            top: 75px;
-            left: 16px;
-            border: solid 2px #000000;
-        }
-
-        #tool-detail-menu {
-            display: none;
-            top: 75px;
-            left: 80px;
-            border: solid 1px #000000;
-            width: 50%;
-        }
-
-        .button {
-            border: none;
-            padding: 5px;
-            border-radius: 5px;
-            background-color: white;
-        }
-
-        #drawing-color {
-            margin: 5px;
-            display: block;
-            width: 35px;
-            height: 35px;
-        }
-
-        .hr {
-            margin-top: -15px;
-            padding: 5px;
-            display: block;
-        }
-
-        .divider {
-            display: inline-block;
-            height: 65%;
-            width: 1px;
-            margin: 0 15px;
-        }
-    }
-
-    @@media only screen and (min-width: 1450px) {
-        .parent-menu {
-            background-color: white;
-            border-radius: 5px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            margin-left: auto;
-            margin-right: auto;
-            left: 0;
-            right: 0;
-            text-align: center;
-        }
-
-        #tool-menu {
-            display: grid;
-            top: 75px;
-            border: solid 2px #000000;
-            width: 50%;
-        }
-
-        #tool-detail-menu {
-            display: none;
-            top: 138px;
-            border: solid 1px #000000;
-            width: 25%;
-        }
-
-        .button {
-            display: inline-grid;
-            border: none;
-            padding: 5px;
-            border-radius: 5px;
-            background-color: white;
-        }
-
-        #drawing-color {
-            display: inline-grid;
-            width: 35px;
-            height: 35px;
-        }
-
-        .divider {
-            display: inline-block;
-            height: 65%;
-            width: 1px;
-            margin: 0 15px;
-        }
-
-        #visible {
-            background-color: #e0e0e0;
-            margin: 0 30px;
-        }
-
-        .hr {
-            display: none;
-        }
-    }
-
-    #object-menu {
-        visibility: hidden;
-        position: absolute;
-        z-index: 1;
-        background-color: white;
-        border-color: black;
-        border-radius: 5px;
-        border: solid 2px #000000;
-        text-align: center;
-        display: grid;
-    }
-
-    body {
-        overflow: hidden;
-    }
-
-    div {
-        -webkit-touch-callout: none; /* iOS Safari */
-        -webkit-user-select: none; /* Safari */
-        -moz-user-select: none; /* Old versions of Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-        user-select: none; /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
-    }
-
-    #canvas {
-        background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
-        background-size: 15px 15px;
-    }
-
-    .button:focus {
-        outline: none;
-    }
-
-    .button img {
-        width: 35px;
-        height: 35px;
-    }
-
-    .dropdown-menu {
-        top: 99% !important;
-    }
-
-    .navbar {
-        padding: .1rem 1rem !important;
-    }
-</style>
 <div>
     <nav class="navbar navbar-expand navbar-light bg-white">
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -263,8 +107,33 @@
             </div>
             <div class="modal-body">
                 <div>
-                    <input id="input_link" type="text" class="form-control" />
-                    <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()">
+                    <ul class="nav nav-tabs">
+                        <li class='nav-item'>
+                            <a class='nav-link active' data-toggle='tab' href='#s1'>Link</a>
+                        </li>
+                        <li class='nav-item'>
+                            <a class='nav-link ' data-toggle='tab' href='#s2'>Email</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <div class='tab-pane container fade in show active' id='s1'>
+                            <input id="input_link" type="text" class="form-control" />
+                            <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()" />
+                        </div>
+                        <div class='tab-pane container fade' id='s2'>
+                            @using (Html.BeginForm("SendEmail", "Room"))
+                            {
+                                <div class="form-group">
+                                    @Html.HiddenFor(m => m.Link)
+                                    @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "example@mail.com" })
+                                </div>
+
+                                <button class="btn btn-primary" type="submit">Send</button>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -285,7 +154,7 @@
             </div>
             <div class="modal-body">
                 <div>
-                    <input class="btn btn-primary close" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
+                    <input class="btn btn-primary" data-dismiss="modal" type="button" value="Ok" onclick="tellServerToClear();">
                 </div>
             </div>
         </div>

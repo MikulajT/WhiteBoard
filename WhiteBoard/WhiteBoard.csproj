@@ -10,4 +10,8 @@
     <Folder Include="wwwroot\uploadedImages\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="2.11.1" />
+  </ItemGroup>
+
 </Project>
