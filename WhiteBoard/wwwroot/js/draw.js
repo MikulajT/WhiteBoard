@@ -151,6 +151,11 @@ function changeGlobalFont(fontValue) {
 function changeObjectFont(fontValue) {
     let activeObject = canvas.getActiveObjects()[0];
     let jsonData = {};
+    let undoEntry = {
+        action: "propertiesChanged",
+        objects: [{ id: activeObject.id, properties: [{ fontFamily: activeObject.fontFamily }] }]
+    };
+    undoStack.push(undoEntry);
     activeObject.set("fontFamily", fontValue);
     jsonData[activeObject.id] = {
         "fontFamily": fontValue,
@@ -163,11 +168,16 @@ function changeObjectFont(fontValue) {
 
 /*
  * Změní velikost označeného objektu 
- */ 
+ */
 $("#object-size").on("change", function () {
     let activeObject = canvas.getActiveObjects()[0];
     let jsonData = {};
+    let undoEntry = {};
     if (activeObject.get("type") == "i-text") {
+        undoEntry = {
+            action: "propertiesChanged",
+            objects: [{ id: activeObject.id, properties: [{ fontSize: activeObject.fontSize }] }]
+        };
         activeObject.set("fontSize", this.value * 4);
         jsonData[activeObject.id] = {
             "fontSize": activeObject.fontSize
@@ -175,11 +185,16 @@ $("#object-size").on("change", function () {
     }
     else if (activeObject.get("type") == "path" ||
         activeObject.get("type") == "line") {
+        undoEntry = {
+            action: "propertiesChanged",
+            objects: [{ id: activeObject.id, properties: [{ strokeWidth: activeObject.strokeWidth }] }]
+        };
         activeObject.set("strokeWidth", parseInt(this.value));
         jsonData[activeObject.id] = {
             "strokeWidth": activeObject.strokeWidth
         };
     }
+    undoStack.push(undoEntry);
     activeObject.setCoords();
     canvas.requestRenderAll();
     connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
@@ -532,8 +547,9 @@ canvas.on("text:editing:exited", function (e) {
         editedObject.textHistory.push(editedObject.text);
         if (editedObject.textHistory.length > 1) {
             let undoEntry = {
-                action: "textChanged",
-                objects: [{ id: editedObject.id, text: editedObject.textHistory[editedObject.textHistory.length - 2] }]
+                action: "propertiesChanged",
+                objects: [{
+                    id: editedObject.id, properties: [{ text: editedObject.textHistory[editedObject.textHistory.length - 2] }] }]
             };
             undoStack.push(undoEntry);
         }
@@ -554,14 +570,15 @@ $("#global-color-picker").on("move.spectrum", function (e, color) {
             let undoEntry;
             if (activeObjects[i].get("type") == "path" ||
                 activeObjects[i].get("type") == "line") {
-                undoEntry = { id: activeObjects[i].id, "stroke": activeObjects[i].stroke };
+                undoEntry = { id: activeObjects[i].id, properties: [{ stroke: activeObjects[i].stroke }] };
                 activeObjects[i].set("stroke", changedColor);
                 jsonData[activeObjects[i].id] = {
                     "stroke": changedColor,
                 };
             }
             else {
-                undoEntry = { id: activeObjects[i].id, "fill": activeObjects[i].fill };
+                undoEntry = {
+                    id: activeObjects[i].id, properties: [{ fill: activeObjects[i].fill }] };
                 activeObjects[i].set("fill", changedColor);
                 jsonData[activeObjects[i].id] = {
                     "fill": changedColor,
@@ -569,7 +586,7 @@ $("#global-color-picker").on("move.spectrum", function (e, color) {
             }
             groupUndoEntries.push(undoEntry);
         }
-        undoStack.push({ action: "colorChanged", objects: groupUndoEntries });
+        undoStack.push({ action: "propertiesChanged", objects: groupUndoEntries });
         canvas.requestRenderAll();
         connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
             return console.error(err.toString());
@@ -744,8 +761,9 @@ canvas.on({
  */
 function objectModified(e) {
     let jsonData = {};
+    let groupUndoEntries = [];
+    let undoEntry;
     if (e.target._objects) {
-        let groupUndoEntries = [];
         for (let i = 0; i < e.target._objects.length; i++) {
             let point = new fabric.Point(e.target._objects[i].left, e.target._objects[i].top);
             let transform = e.target.calcTransformMatrix();
@@ -759,17 +777,18 @@ function objectModified(e) {
                 "scaleY": fabric.util.qrDecompose(matrix).scaleY
             };
             let lastPos = e.target._objects[i].coordsHistory.pop();
-            let undoEntry = {
+            undoEntry = {
                 id: e.target._objects[i].id,
-                top: lastPos.top,
-                left: lastPos.left,
-                angle: lastPos.angle,
-                scaleX: lastPos.scaleX,
-                scaleY: lastPos.scaleY
+                properties: [
+                    { top: lastPos.top },
+                    { left: lastPos.left },
+                    { angle: lastPos.angle },
+                    { scaleX: lastPos.scaleX },
+                    { scaleY: lastPos.scaleY }
+                ]
             };
             groupUndoEntries.push(undoEntry);
         }
-        undoStack.push({ action: "modified", objects: groupUndoEntries });
     }
     else {
         jsonData[e.target.id] = {
@@ -780,19 +799,19 @@ function objectModified(e) {
             "scaleY": e.target.scaleY
         };
         let lastPos = e.target.coordsHistory.pop();
-        let undoEntry = {
-            action: "modified",
-            objects: [{
-                id: e.target.id,
-                top: lastPos.top,
-                left: lastPos.left,
-                angle: lastPos.angle,
-                scaleX: lastPos.scaleX,
-                scaleY: lastPos.scaleY
-            }]
+        undoEntry = {
+            id: e.target.id,
+            properties: [
+                { top: lastPos.top },
+                { left: lastPos.left },
+                { angle: lastPos.angle },
+                { scaleX: lastPos.scaleX },
+                { scaleY: lastPos.scaleY }
+            ]
         };
-        undoStack.push(undoEntry);
+        groupUndoEntries.push(undoEntry);
     }
+    undoStack.push({ action: "propertiesChanged", objects: groupUndoEntries });
     connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
         return console.error(err.toString());
     });
@@ -970,17 +989,11 @@ function undo() {
             case "removed":
                 undoRedoObjectsRemoval("undo", undoEntry.objects);
                 break;
-            case "modified":
-                undoRedoObjectsModification("undo", undoEntry.objects);
-                break;
-            case "textChanged":
-                undoRedoTextChange("undo", undoEntry.objects);
+            case "propertiesChanged":
+                undoRedoPropertiesChanged("undo", undoEntry.objects);
                 break;
             case "canvasCleared":
                 undoRedoCanvasClear("undo", undoEntry.canvas);
-                break;
-            case "colorChanged":
-                undoRedoColorChange("undo", undoEntry.objects);
                 break;
         }
         canvas.requestRenderAll();
@@ -1000,17 +1013,11 @@ function redo() {
             case "removed":
                 undoRedoObjectsRemoval("redo", redoEntry.objects);
                 break;
-            case "modified":
-                undoRedoObjectsModification("redo", redoEntry.objects);
-                break;
-            case "textChanged":
-                undoRedoTextChange("redo", redoEntry.objects);
+            case "propertiesChanged":
+                undoRedoPropertiesChanged("redo", redoEntry.objects);
                 break;
             case "canvasCleared":
                 undoRedoCanvasClear("redo");
-                break;
-            case "colorChanged":
-                undoRedoColorChange("redo", redoEntry.objects);
                 break;
         }
         canvas.requestRenderAll();
@@ -1115,25 +1122,35 @@ function undoRedoObjectsModification(undoOrRedo, stackObjects) {
 }
 
 /**
- * Provede undo/redo u změny textu
+ * Provede undo/redo změny vlastností objektů 
  * @param {any} undoOrRedo
  * @param {any} stackObject
  */
-function undoRedoTextChange(undoOrRedo, stackObject) {
-    let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObject[0].id });
-    let objTempText = canvasObj.text;
-    canvasObj.set({
-        text: stackObject[0].text
-    });
+function undoRedoPropertiesChanged(undoOrRedo, stackObjects) {
+    let groupEntries = [];
+    let jsonData = {};
+    for (let i = 0; i < stackObjects.length; i++) {
+        let modifiedProperties = [];
+        let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
+        for (let j = 0; j < stackObjects[i].properties.length; j++) {
+            let propertyType = Object.keys(stackObjects[i].properties[j])[0];
+            modifiedProperties.push({ [propertyType]: canvasObj[propertyType] });
+            canvasObj.set(propertyType, stackObjects[i].properties[j][propertyType]);
+            jsonData[canvasObj.id] = {
+            [propertyType]: canvasObj[propertyType]
+            };
+        }
+        groupEntries.push({
+            id: canvasObj.id,
+            properties: modifiedProperties
+        });
+    }
     if (undoOrRedo == "undo") {
-        redoStack.push({ action: "textChanged", objects: [{ id: canvasObj.id, text: objTempText }] });
+        redoStack.push({ action: "propertiesChanged", objects: groupEntries });
     }
     else {
-        undoStack.push({ action: "textChanged", objects: [{ id: canvasObj.id, text: objTempText }] });
+        undoStack.push({ action: "propertiesChanged", objects: groupEntries });
     }
-    let jsonData = {
-        [canvasObj.id]: { "text": canvasObj.text }
-    };
     connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
         return console.error(err.toString());
     });
@@ -1160,37 +1177,6 @@ function undoRedoCanvasClear(undoOrRedo, jsonCanvas) {
             return console.error(err.toString());
         });
     }
-}
-
-/**
- * Provede undo/redo změny barvy objektů
- * @param {any} undoOrRedo
- * @param {any} stackObject
- */
-function undoRedoColorChange(undoOrRedo, stackObjects) {
-    let groupEntries = [];
-    let jsonData = {};
-    for (let i = 0; i < stackObjects.length; i++) {
-        let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
-        let propertyType = Object.keys(stackObjects[i])[1];
-        groupEntries.push({
-            id: canvasObj.id,
-            [propertyType]: propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
-        });
-        canvasObj.set(propertyType, stackObjects[i][propertyType]);
-        jsonData[canvasObj.id] = {
-            [propertyType]: propertyType == "stroke" ? canvasObj.stroke : canvasObj.fill
-        };
-    }
-    if (undoOrRedo == "undo") {
-        redoStack.push({ action: "colorChanged", objects: groupEntries });
-    }
-    else {
-        undoStack.push({ action: "colorChanged", objects: groupEntries });
-    }
-    connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
-        return console.error(err.toString());
-    });
 }
 
 /**
@@ -1222,6 +1208,8 @@ function copyObjects() {
  * */
 function pasteObjects() {
     let jsonObjects = [];
+    let groupEntries = [];
+    let undoEntry;
     canvas.discardActiveObject();
     clonedObjects.set({
         left: clonedObjects.left + 50,
@@ -1236,6 +1224,8 @@ function pasteObjects() {
             let tempTop = obj.top;
             canvas.add(obj);
             obj.id = generateGUID();
+            undoEntry = { id: obj.id };
+            groupEntries.push(undoEntry);
             obj.set({
                 left: originalObject.left + 50,
                 top: originalObject.top + 50
@@ -1250,9 +1240,11 @@ function pasteObjects() {
     } else {
         canvas.add(clonedObjects);
         clonedObjects.id = generateGUID();
+        undoEntry = { id: clonedObjects.id };
+        groupEntries.push(undoEntry);
         jsonObjects.push(clonedObjects.toJSON(["id"]));
-
     }
+    undoStack.push({ action: "added", objects: groupEntries });
     var json = JSON.stringify(jsonObjects)
     connection.invoke("AddObjects", json, groupName).catch(function (err) {
         return console.error(err.toString());
