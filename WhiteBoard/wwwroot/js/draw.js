@@ -202,6 +202,9 @@ $("#object-size").on("change", function () {
     });
 });
 
+$("#path-object-size").on("change", function () {
+    canvas.freeDrawingBrush.width = parseInt(this.value);
+});
 
 /*
  * Přesune vybrané objekty do horní nebo spodní vrstvy canvasu
@@ -258,6 +261,7 @@ function changeDrawingMode() {
         canvas.defaultCursor = "default";
         document.getElementById("draw_button").style.backgroundColor = "white";
     }
+    showPathMenu();
 }
 
 function changeStraightLineMode() {
@@ -280,6 +284,7 @@ function changeStraightLineMode() {
         canvas.defaultCursor = "default";
         document.getElementById("straight_line_button").style.backgroundColor = "white";
     }
+    showLineMenu();
 }
 
 /**
@@ -333,15 +338,41 @@ function changeDragMode() {
 }
 
 /**
- * Zobrazí nebo skryje detailní menu nástroje
+ * Zobrazí nebo skryje detailní menu pro text
  */
 function showTextMenu() {
-    var textMenu = $("#tool-detail-menu");
-    if (textMenu.is(":hidden")) {
-        textMenu.show();
+    let textMenu = document.getElementById("text-detail-menu");
+    if (window.getComputedStyle(textMenu).display === "none") {
+        textMenu.style.display = "grid";
     }
     else {
-        textMenu.hide();
+        textMenu.style.display = "none";
+    }
+}
+
+/**
+ * Zobrazí nebo skryje detailní menu pro kreslení čar
+ */
+function showPathMenu() {
+    let pathMenu = document.getElementById("path-detail-menu");
+    if (window.getComputedStyle(pathMenu).display === "none") {
+        pathMenu.style.display = "grid";
+    }
+    else {
+        pathMenu.style.display = "none";
+    }
+}
+
+/**
+ * Zobrazí nebo skryje detailní menu pro kreslení čar
+ */
+function showLineMenu() {
+    let lineMenu = document.getElementById("line-detail-menu");
+    if (window.getComputedStyle(lineMenu).display === "none") {
+        lineMenu.style.display = "grid";
+    }
+    else {
+        lineMenu.style.display = "none";
     }
 }
 
@@ -361,7 +392,7 @@ canvas.on("mouse:down", function (opt) {
         let pointer = canvas.getPointer(opt.e);
         let points = [pointer.x, pointer.y, pointer.x, pointer.y];
         straightLine = new fabric.Line(points, {
-            strokeWidth: 1,
+            strokeWidth: parseInt(document.getElementById("line-object-size").value),
             stroke: $("#global-color-picker").val()
         });
         canvas.add(straightLine);
@@ -523,7 +554,8 @@ canvas.on("mouse:down", function (event) {
             top: pointer.y,
             fontFamily: currentFont,
             fill: color,
-            lineHeight: 1.1
+            lineHeight: 1.1,
+            fontSize: document.getElementById("global-object-size").value * 4
         }
         );
         canvas.add(iText);
