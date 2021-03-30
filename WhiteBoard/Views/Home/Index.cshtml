@@ -2,9 +2,7 @@
     ViewData["Title"] = "Home Page";
 }
 
-@model RoomModel
-
 <h1>Home page</h1>
 
-<a href="@Url.Action("Board", "Room", new { roomId = ViewBag.roomId })">Create shared board</a>
+<a href="@Url.Action("Board", "Board", new { boardId = ViewBag.boardId })">Create shared board</a>
 

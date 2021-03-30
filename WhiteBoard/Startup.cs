@@ -25,7 +25,8 @@ namespace WhiteBoard
             {
                 o.EnableDetailedErrors = true;
             });
-            services.AddScoped<WhiteBoard.Models.RoomService>();
+            services.AddSingleton<Models.IBoardService, Models.BoardService>();
+            services.AddSingleton<Models.IBoardRepository, Models.BoardRepository>();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         }
 

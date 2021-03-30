@@ -1,31 +1,32 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http.Headers;
-using MailKit.Net.Smtp;
+﻿using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using MimeKit;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http.Headers;
 using WhiteBoard.Hubs;
 using WhiteBoard.Models;
 
 namespace WhiteBoard.Controllers
 {
-    public class RoomController : Controller
+    public class BoardController : Controller
     {
         private IHubContext<BoardHub> HubContext { get; set; }
         private readonly IWebHostEnvironment _hostEnvironment;
-        public RoomController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment)
+
+        public BoardController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment)
         {
             HubContext = hubcontext;
             _hostEnvironment = environment;
         }
 
-        [Route("Board/{roomId}")]
-        public IActionResult Board(string roomId)
+        [Route("Board/{boardId}")]
+        public IActionResult Board(string boardId)
         {
             return View();
         }

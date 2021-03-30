@@ -1,23 +1,30 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 
 namespace WhiteBoard.Models
 {
-    public class RoomService
+    public class BoardService : IBoardService
     {
         private const int BYTE_LENGTH = 16;
 
-        RoomModel room = new RoomModel();
+        /// <summary>
+        /// Vygeneruje pin o určitém počtu cifer podle rozsahu.
+        /// </summary>
+        /// <param name="valueFrom"></param>
+        /// <param name="valueTo"></param>
+        /// <returns></returns>
+        public int GenerateRoomPin(int valueFrom, int valueTo)
+        {
+            Random rdm = new Random();
+            return rdm.Next(valueFrom, valueTo);
+        }
 
         /// <summary>
         /// Generate a fixed length token that can be used in url without endcoding it
         /// </summary>
         /// <returns></returns>
-        public string GenerateRoomId()
+        public string GenerateBoardId()
         {
             // get secure array bytes
             byte[] secureArray = GenerateRandomBytes();
@@ -25,9 +32,7 @@ namespace WhiteBoard.Models
             // convert in an url safe string
             string urlToken = WebEncoders.Base64UrlEncode(secureArray);
 
-            room.Id = urlToken;
-
-            return room.Id;
+            return urlToken;
         }
 
         /// <summary>
@@ -43,15 +48,6 @@ namespace WhiteBoard.Models
 
                 return byteArray;
             }
-        }
-
-        /// <summary>
-        /// Získá id roomky
-        /// </summary>
-        /// <returns></returns>
-        private string GetRoomId()
-        {
-            return room.Id;
         }
     }
 }

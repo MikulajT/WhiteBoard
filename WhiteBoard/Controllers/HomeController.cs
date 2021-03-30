@@ -1,25 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using WhiteBoard.Models;
 
 namespace WhiteBoard.Controllers
 {
     public class HomeController : Controller
     {
-        RoomService boardService;
-        public HomeController(RoomService boardService)
+        readonly IBoardService boardService;
+        public HomeController(IBoardService boardService)
         {
             this.boardService = boardService;
         }
 
         public IActionResult Index()
         {
-            ViewBag.roomId = boardService.GenerateRoomId();
+            ViewBag.boardId = boardService.GenerateBoardId();
             return View();
         }
 

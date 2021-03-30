@@ -1,18 +1,44 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using WhiteBoard.Models;
 
 namespace WhiteBoard.Hubs
 {
     public class BoardHub : Hub
     {
+        readonly private IBoardRepository repository;
+        readonly private IBoardService service;
+
+        public BoardHub(IBoardRepository boardRepository, IBoardService boardService)
+        {
+            repository = boardRepository;
+            service = boardService;
+        }
+
         /// <summary>
-        /// Po připojení přiřadí uživatele ke skupině
+        /// Po připojení přiřadí uživatele ke skupině. Pokud skupina ještě neexistuje, tak ji vytvoří.
         /// </summary>
         /// <param name="groupName"></param>
         public async Task AddUserToGroup(string groupName)
         {
+            if (repository.FindBoardById(groupName) == null)
+            {
+                repository.AddBoard(new BoardModel()
+                {
+                    BoardId = groupName,
+                    Name = "TODO",
+                    Pin = service.GenerateRoomPin(1000, 9999),
+                    Users = new List<UserModel>()
+                });
+            }
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            repository.AddUser(groupName, new UserModel()
+            {
+                UserId = Context.ConnectionId,
+                Username = "TODO",
+                Role = UserRole.Editor,
+            });
         }
 
         /// <summary>
