@@ -17,6 +17,16 @@ namespace WhiteBoard.Models
         /// <param name="board"></param>
         public void AddBoard(BoardModel board)
         {
+            int count = boards.Count;
+
+            if(count == 0)
+            {
+                board.Name = "Board0";
+            }
+            else
+            {
+                board.Name = "Board" + count++.ToString();
+            }
             boards.Add(board);
         }
 
@@ -38,6 +48,16 @@ namespace WhiteBoard.Models
         public BoardModel FindBoardById(string id)
         {
             return ((List<BoardModel>)boards).Find(x => x.BoardId == id);
+        }
+
+        /// <summary>
+        /// Vyhledá tabuli podle jmena
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public BoardModel FindBoardByName(string name)
+        {
+            return ((List<BoardModel>)boards).Find(x => x.Name == name);
         }
 
         /// <summary>

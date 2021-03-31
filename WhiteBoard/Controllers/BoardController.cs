@@ -18,11 +18,13 @@ namespace WhiteBoard.Controllers
     {
         private IHubContext<BoardHub> HubContext { get; set; }
         private readonly IWebHostEnvironment _hostEnvironment;
+        readonly IBoardRepository boardRepository;
 
-        public BoardController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment)
+        public BoardController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment, IBoardRepository boardRepository)
         {
             HubContext = hubcontext;
             _hostEnvironment = environment;
+            this.boardRepository = boardRepository;
         }
 
         [Route("Board/{boardId}")]
@@ -68,27 +70,94 @@ namespace WhiteBoard.Controllers
         }
 
         public IActionResult SendEmail(EmailForm form)
-        {
+        {          
+            BoardModel board = boardRepository.FindBoardById(form.Link.Split('/').Last());
+            string URL = "https://localhost:44313/Board/" + board.Name;           
+
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress("whiteboard@vsb.cz"));
             message.To.Add(new MailboxAddress("marekbauer@centrum.cz"));
             message.Subject = "Invite to WhiteBoard session!";
-            message.Body = new TextPart("html")
-            {
-                Text = "<h1>Join whiteboard session here: </h1> <br />" +
-                        form.Link
-            };
 
-            //TODO pridat adresu serveru a prihlasovaci udaje po zarizeni hostingu
-            using (var smtp = new SmtpClient())
+
+            if (form.Pin)
             {
-                //smtp.Connect();
-                //smtp.Authenticate();
-                //smtp.Send(message);
-                //smtp.Disconnect(true);
+                message.Body = new TextPart("html")
+                {
+                    Text = "<h1>Join whiteboard session here: </h1> <br />" +
+                        URL +
+                        "Connect with pincode: " + board.Pin.ToString()
+                };
+            }
+            else
+            {
+                message.Body = new TextPart("html")
+                {
+                    Text = "<h1>Join whiteboard session here: </h1> <br />" +
+                    form.Link
+                };
             }
 
-            return Redirect(form.Link);
+            //TODO pridat adresu serveru a prihlasovaci udaje po zarizeni hostingu
+            /*
+            using (var smtp = new SmtpClient())
+            {
+                smtp.Connect();
+                smtp.Authenticate();
+                smtp.Send(message);
+                smtp.Disconnect(true);
+            }
+            */
+
+            //return Redirect(form.Link);
+            if (form.Pin)
+            {
+                return RedirectToAction("Access", new { boardName = board.Name });
+            }
+            else
+            {
+                return Redirect(form.Link);
+            }
+            
         }
+        [Route("Access/{boardName}")]
+        public IActionResult Access(string boardName)
+        {
+            return View();
+        }
+      
+        public IActionResult VerifyPin(PinForm form)
+        {
+            string URL = "https://localhost:44313/Board/";
+            string name = form.Link.Split('/').Last();
+
+            if (ModelState.IsValid)
+            {
+                int pin = int.Parse(form.p1.ToString() + form.p2.ToString() + form.p3.ToString() + form.p4.ToString());
+                BoardModel board = boardRepository.FindBoardByName(name);
+
+                if (board != null)
+                {
+                    if(boardRepository.CompareBoardByPin(board.BoardId, pin))
+                    {
+                        return Redirect(URL + board.BoardId);
+                    }
+                    else
+                    {
+                        TempData["error"] = "Wrong pin.";
+                    }
+                }
+                else
+                {
+                    TempData["error"] = "Wrong link.";
+                }
+            }
+            else
+            {
+                TempData["error"] = "Wrong fromat.";
+            }
+            return RedirectToAction("Access", new { boardName = name });
+        }
+
     }
 }

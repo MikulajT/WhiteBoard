@@ -1,0 +1,59 @@
+﻿@{
+    Layout = "_BoardLayout";
+}
+@model WhiteBoard.Models.PinForm
+<link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
+<link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
+<link rel="stylesheet" type="text/css" href="~/css/jquery.fontselect.css">
+<link rel="stylesheet" type="text/css" href="~/css/board.css">
+
+<canvas id="canvas" class="context-menu"></canvas>
+
+<!-- Modal window - copy link-->
+<div class="modal fade show" id="pin" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    Enter pin code
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div>
+                    @using (Html.BeginForm("VerifyPin", "Board"))
+                    {
+                        <div class="form-group">
+                            @Html.HiddenFor(m => m.Link)
+                            @Html.TextBoxFor(m => m.p1, new { @class = "form-control password", id = "1", placeholder = "*", oninput = "document.getElementById('2').focus();" })
+                            @Html.TextBoxFor(m => m.p2, new { @class = "form-control password", id = "2", placeholder = "*", oninput = "document.getElementById('3').focus();" })
+                            @Html.TextBoxFor(m => m.p3, new { @class = "form-control password", id = "3", placeholder = "*", oninput = "document.getElementById('4').focus();" })
+                            @Html.TextBoxFor(m => m.p4, new { @class = "form-control password", id = "4", placeholder = "*", oninput = "this.form.submit();" })
+                        </div>
+                    }
+                    @if (TempData["error"] != null)
+                    {
+                        <p class="text-danger">@TempData["error"]</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById("Link").value = window.location.href;
+</script>
+
+<style>
+    .modal-content{width:50% !important;}
+
+</style>
+
+<script src="~/lib/jquery/dist/jquery.js"></script>
+<script src="~/lib/signalr/dist/browser/signalr.js"></script>
+<script src="~/lib/fabricjs/fabric.min.js"></script>
+<script defer src="~/js/jquery.contextMenu.js"></script>
+<script defer src="~/js/jquery.ui.position.min.js"></script>
+<script defer src="~/js/spectrum.js"></script>
+<script defer src="~/js/jquery.fontselect.js"></script>
+<script defer src="~/js/draw.js"></script>

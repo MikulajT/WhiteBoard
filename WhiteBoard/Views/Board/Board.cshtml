@@ -135,11 +135,19 @@
                             <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Copy link" onclick="copyURL()" />
                         </div>
                         <div class='tab-pane container fade' id='s2'>
-                            @using (Html.BeginForm("SendEmail", "Room"))
+                            @using (Html.BeginForm("SendEmail", "Board"))
                             {
                                 <div class="form-group">
                                     @Html.HiddenFor(m => m.Link)
+
+                                    @Html.LabelFor(m => m.Email)
                                     @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "example@mail.com" })
+
+                                    <br />
+
+                                    @Html.LabelFor(m => m.Pin)
+                                    @Html.CheckBoxFor(m => m.Pin)
+
                                 </div>
 
                                 <button class="btn btn-primary" type="submit">Send</button>
