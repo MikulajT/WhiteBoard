@@ -167,3 +167,10 @@ div {
     display: inline;
     margin-right: 5px;
 }
+
+#boardName {
+    text-align: center;
+    font-size: 20px;
+    border: 0;
+    box-shadow: none;
+}

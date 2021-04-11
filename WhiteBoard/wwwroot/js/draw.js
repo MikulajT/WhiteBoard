@@ -35,6 +35,25 @@ let canvas = new fabric.Canvas("canvas", {
 });
 fabric.Object.prototype.lockScalingFlip = true;
 
+/**
+ * Požadavek na server ke změně přezdívky uživatele
+ */
+function changeUsername() {
+    let changedUsername = $("#username").val();
+    connection.invoke("ChangeUsername", changedUsername, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
+/**
+ * Požadavek na server ke změně názvu tabule
+ */
+function changeBoardname(boardName) {
+    connection.invoke("ChangeBoardname", boardName, groupName).catch(function (err) {
+        return console.error(err.toString());
+    });
+}
+
 /*
  * Umožňuje uložit obrázky do JSONu při exportu tabule do nativního formátu
  */
@@ -498,9 +517,9 @@ $("#imageUpload").change(function () {
  * Export tabule do formátu PNG
  */
 function exportToImage() {
-    var transform = canvas.viewportTransform.slice();
+    let transform = canvas.viewportTransform.slice();
     canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-    var sel = new fabric.ActiveSelection(canvas.getObjects(), {
+    let sel = new fabric.ActiveSelection(canvas.getObjects(), {
         canvas: canvas,
     });
     $("<a>").attr({
@@ -519,7 +538,7 @@ function exportToImage() {
  * Ulozeni canvasu jako projektu
  */
 function saveProject(el) {
-    var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id'])));
+    let data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id'])));
     el.setAttribute("href", "data:" + data);
     el.setAttribute("download", "Board.json");
 }
@@ -648,6 +667,13 @@ function copyURL() {
  */
 connection.on("clearCanvas", function () {
     canvas.clear();
+});
+
+/**
+ * Příkaz ze serveru ke změně názvu tabule
+ */
+connection.on("changeBoardname", function (changedBoardName) {
+    $("#boardName").val(changedBoardName);
 });
 
 /**

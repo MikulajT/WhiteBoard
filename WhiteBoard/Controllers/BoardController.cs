@@ -1,5 +1,4 @@
-﻿using MailKit.Net.Smtp;
-using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -20,7 +19,9 @@ namespace WhiteBoard.Controllers
         private readonly IWebHostEnvironment _hostEnvironment;
         readonly IBoardRepository boardRepository;
 
-        public BoardController(IHubContext<BoardHub> hubcontext, IWebHostEnvironment environment, IBoardRepository boardRepository)
+        public BoardController(IHubContext<BoardHub> hubcontext,
+                               IWebHostEnvironment environment,
+                               IBoardRepository boardRepository)
         {
             HubContext = hubcontext;
             _hostEnvironment = environment;
@@ -44,7 +45,7 @@ namespace WhiteBoard.Controllers
         /// tak uvolní místo odebráním nejstaršího souboru
         /// </summary>
         [HttpPost]
-        public async void UploadImage()
+        public void UploadImage()
         {
             if (HttpContext.Request.Form.Files != null && HttpContext.Request.Form.Files[0].ContentType.Contains("image"))
             {
@@ -59,7 +60,7 @@ namespace WhiteBoard.Controllers
                     file.CopyTo(fs);
                 }
                 string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
-                await HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
+                HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
                 string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
                 if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 10)
                 {
@@ -70,9 +71,9 @@ namespace WhiteBoard.Controllers
         }
 
         public IActionResult SendEmail(EmailForm form)
-        {          
+        {
             BoardModel board = boardRepository.FindBoardById(form.Link.Split('/').Last());
-            string URL = "https://localhost:44313/Board/" + board.Name;           
+            string URL = "https://localhost:44313/Board/" + board.Name;
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress("whiteboard@vsb.cz"));
@@ -118,14 +119,14 @@ namespace WhiteBoard.Controllers
             {
                 return Redirect(form.Link);
             }
-            
+
         }
         [Route("Access/{boardName}")]
         public IActionResult Access(string boardName)
         {
             return View();
         }
-      
+
         public IActionResult VerifyPin(PinForm form)
         {
             string URL = "https://localhost:44313/Board/";
@@ -138,7 +139,7 @@ namespace WhiteBoard.Controllers
 
                 if (board != null)
                 {
-                    if(boardRepository.CompareBoardByPin(board.BoardId, pin))
+                    if (boardRepository.CompareBoardByPin(board.BoardId, pin))
                     {
                         return Redirect(URL + board.BoardId);
                     }
