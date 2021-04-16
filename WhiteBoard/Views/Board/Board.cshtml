@@ -42,10 +42,16 @@
 
     <div class="parent-menu" id="tool-menu">
         <div>
+            <button type="submit" class="button" id="select_button" onclick="changeSelectMode()">
+                <img src="~/resources/select.png">
+            </button>
+            <div class="divider"></div>
+
             <button type="submit" class="button" id="drag_button" onclick="changeDragMode()">
                 <img src="~/resources/grab.png">
             </button>
-            <div class="divider"></div>
+            <div class="divider" id="visible"></div>
+            <div class="hr"><hr></div>
 
             <button type="submit" class="button" id="draw_button" onclick="changeDrawingMode()">
                 <img src="~/resources/draw.png">
@@ -90,8 +96,7 @@
     </div>
     <div class="parent-menu tool-detail-menu" id="text-detail-menu">
         <div>
-            <input id="global-font-picker" type="text">
-            <div class="divider" id="visible"></div>
+            <input id="global-font-picker" type="text">    
             <input id="global-object-size" type="range" min="1" max="20" step="1" />
         </div>
     </div>

@@ -1,6 +1,7 @@
 ﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
 let groupName;
 
+let selectMode = false;
 let textMode = false;
 let textEdit = false;
 let drawingMode = false;
@@ -262,6 +263,26 @@ function contextMenuShowed(opt) {
 }
 
 /**
+ * Přepnutí režimu vyberu
+ */
+function changeSelectMode() {
+    if (!selectMode) {
+        document.getElementById("select_button").style.backgroundColor = "#dddddd";
+        selectMode = true;
+
+        if (textMode) changetextMode();
+        if (dragMode) changeDragMode();
+        if (straightLineMode) changeStraightLineMode();
+        if (drawingMode) changeDrawingMode();
+    }
+    else {
+        selectMode = false;
+        canvas.defaultCursor = "default";
+        document.getElementById("select_button").style.backgroundColor = "white";
+    }
+}
+
+/**
  * Přepnutí režimu kreslení
  */
 function changeDrawingMode() {
@@ -270,6 +291,7 @@ function changeDrawingMode() {
         canvas.isDrawingMode = true;
         drawingMode = true;
 
+        if (selectMode) changeSelectMode();
         if (textMode) changetextMode();
         if (dragMode) changeDragMode();
         if (straightLineMode) changeStraightLineMode();
@@ -289,6 +311,7 @@ function changeStraightLineMode() {
         canvas.selection = false;
         straightLineMode = true;
 
+        if (selectMode) changeSelectMode();
         if (drawingMode) changeDrawingMode();
         if (textMode) changetextMode();
         if (dragMode) changeDragMode();
@@ -315,6 +338,7 @@ function changetextMode() {
         document.getElementById("text_button").style.backgroundColor = "#dddddd";
         textMode = true;
 
+        if (selectMode) changeSelectMode();
         if (drawingMode) changeDrawingMode();
         if (dragMode) changeDragMode();
         if (straightLineMode) changeStraightLineMode();
@@ -337,6 +361,7 @@ function changeDragMode() {
         canvas.defaultCursor = "grab";
         document.getElementById("drag_button").style.backgroundColor = "#dddddd";
 
+        if (selectMode) changeSelectMode();
         if (drawingMode) changeDrawingMode();
         if (textMode) changetextMode();
         if (straightLineMode) changeStraightLineMode();
