@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using WhiteBoard.Models;
 
@@ -16,39 +18,52 @@ namespace WhiteBoard.Hubs
             service = boardService;
         }
 
+        #region Messages to client
+
         /// <summary>
         /// Po připojení přiřadí uživatele ke skupině. Pokud skupina ještě neexistuje, tak ji vytvoří.
         /// </summary>
         /// <param name="groupName"></param>
-        public async Task AddUserToGroup(string groupName)
+        public async Task StartUserConnection(string groupName)
         {
-            bool boardExisted = true;
-            if (repository.FindBoardById(groupName) == null)
+            UserModel user = new UserModel()
             {
-                repository.AddBoard(new BoardModel()
-                {
-                    BoardId = groupName,
-                    Name = "",
-                    Pin = service.GenerateRoomPin(1000, 9999),
-                    Users = new List<UserModel>()
-                });
-                boardExisted = false;
-            }
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            repository.AddUser(groupName, new UserModel()
-            {
-                UserId = Context.ConnectionId,
+                UserId = Guid.NewGuid().ToString(),
                 Username = "Anonymous",
                 Role = UserRole.Editor,
-            });
-            if (boardExisted)
+                UserConnectionId = Context.ConnectionId
+            };
+            BoardModel board;
+            bool boardExisted = true;
+            if ((board = repository.FindBoardById(groupName)) == null)
             {
-                string boardName = repository.FindBoardById(groupName).Name;
-                if (boardName != "")
-                {
-                    await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", boardName);
-                }
+                board = CreateBoard(groupName);
+                boardExisted = false;
+                user.Role = UserRole.Creator;
             }
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            repository.AddUserToBoard(board, user);
+            if (boardExisted && board.Name != "")
+            {
+                await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", board.Name);
+            }
+            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users));
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }));
+        }
+
+        /// <summary>
+        /// Ukončení spojení uživatele
+        /// </summary>
+        public override async Task OnDisconnectedAsync(Exception exception)
+        {
+            BoardModel board = repository.FindBoardByUserConnectionId(Context.ConnectionId);
+            if (board != null)
+            {
+                UserModel user = repository.FindUserByConnectionId(board.BoardId, Context.ConnectionId);
+                await Clients.Group(board.BoardId).SendAsync("removeUserFromList", user.UserId);
+                board.Users.Remove(repository.FindUserById(board.BoardId, user.UserId));
+            }
+            await base.OnDisconnectedAsync(exception);
         }
 
         /// <summary>
@@ -60,23 +75,29 @@ namespace WhiteBoard.Hubs
         }
 
         /// <summary>
-        /// Příkaz ke změně přezdívky uživatele
-        /// </summary>
-        public async Task ChangeUsername(string changedUsername, string groupName)
-        {
-            string userId = Context.ConnectionId;
-            repository.ChangeUsername(groupName, userId, changedUsername);
-            //TODO
-            //await Clients.GroupExcept(groupName, userId).SendAsync("changeUsername", changedUsername, userId);
-        }
-
-        /// <summary>
         /// Příkaz ke změně názvu tabule
         /// </summary>
         public async Task ChangeBoardname(string changedBoardname, string groupName)
         {
             repository.ChangeBoardname(groupName, changedBoardname);
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeBoardname", changedBoardname);
+        }
+
+        /// <summary>
+        /// Příkaz ke změně přezdívky uživatele
+        /// </summary>
+        public async Task ChangeUsername(string changedUsername, string groupName)
+        {
+            UserModel user = repository.FindUserByConnectionId(groupName, Context.ConnectionId);
+            user.Username = changedUsername;
+            await Clients.Group(groupName).SendAsync("changeUsername", user.Username, user.UserId);
+        }
+
+        public async Task ChangeUserRole(string userId, string role, string groupName)
+        {
+            UserModel user = repository.FindUserById(groupName, userId);
+            user.Role = (UserRole)Enum.Parse(typeof(UserRole), role);
+            await Clients.Client(user.UserConnectionId).SendAsync("changeUserRole", userId, user.Role.ToString());
         }
 
         /// <summary>
@@ -118,5 +139,24 @@ namespace WhiteBoard.Hubs
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("moveObjectsStack", objectsId, frontOrBack);
         }
+
+        #endregion
+
+        #region Hub logic
+
+        private BoardModel CreateBoard(string groupName)
+        {
+            BoardModel board = new BoardModel()
+            {
+                BoardId = groupName,
+                Name = "",
+                Pin = service.GenerateRoomPin(1000, 9999),
+                Users = new List<UserModel>()
+            };
+            repository.AddBoard(board);
+            return board;
+        }
+
+        #endregion
     }
 }

@@ -15,13 +15,14 @@ let redoStack = [];
 let clonedObjects;
 let straightLine;
 let currentFont = "Helvetica";
+let readMode = false;
 
 /**
  * Vytvoření spojení se serverem
  */
 connection.start().then(function () {
     groupName = getGroupName();
-    connection.invoke("AddUserToGroup", groupName)
+    connection.invoke("StartUserConnection", groupName)
 }).catch(function (err) {
     return console.error(err.toString());
 });
@@ -374,9 +375,16 @@ function changeDragMode() {
         dragMode = false;
         canvas.defaultCursor = "default";
         document.getElementById("drag_button").style.backgroundColor = "white";
-        for (let i = 0; i < objects.length; i++) {
-            objects[i].selectable = true;
-            objects[i].hoverCursor = null;
+        if (!readMode) {
+            for (let i = 0; i < objects.length; i++) {
+                objects[i].selectable = true;
+                objects[i].hoverCursor = null;
+            }
+        }
+        else {
+            for (let i = 0; i < objects.length; i++) {
+                objects[i].hoverCursor = null;
+            }
         }
     }
 }
@@ -424,7 +432,7 @@ function showLineMenu() {
  * Pohyb po canvasu
  */
 canvas.on("mouse:down", function (opt) {
-    var evt = opt.e;
+    let evt = opt.e;
     if (dragMode) {
         this.isDragging = true;
         this.selection = false;
@@ -444,8 +452,8 @@ canvas.on("mouse:down", function (opt) {
 });
 canvas.on("mouse:move", function (opt) {
     if (this.isDragging) {
-        var e = opt.e;
-        var vpt = this.viewportTransform;
+        let e = opt.e;
+        let vpt = this.viewportTransform;
         vpt[4] += e.clientX - this.lastPosX;
         vpt[5] += e.clientY - this.lastPosY;
         this.requestRenderAll();
@@ -490,8 +498,8 @@ function getGroupName() {
  * Zoom
  */
 canvas.on("mouse:wheel", function (opt) {
-    var delta = opt.e.deltaY;
-    var zoom = canvas.getZoom();
+    let delta = opt.e.deltaY;
+    let zoom = canvas.getZoom();
     zoom *= 0.999 ** delta;
     if (zoom > 20) zoom = 20;
     if (zoom < 0.01) zoom = 0.01;
@@ -572,10 +580,10 @@ function saveProject(el) {
  * Nacteni canvasu jako projektu
  */
 $(document).on('change', '#projectUpload', function (event) {
-    var reader = new FileReader();
+    let reader = new FileReader();
 
     reader.onload = function (event) {
-        var jsonObj = JSON.parse(event.target.result);
+        let jsonObj = JSON.parse(event.target.result);
         canvas.loadFromJSON(jsonObj);
         connection.invoke("LoadCanvas", event.target.result, groupName).catch(function (err) {
             return console.error(err.toString());
@@ -688,6 +696,110 @@ function copyURL() {
 }
 
 /**
+ * Příkaz ze serverů k přidání uživatelů/uživatele do seznamu uživatelů
+ */
+connection.on("addUsersToList", function (user) {
+    let addedUsers = JSON.parse(user);
+    for (let i = 0; i < addedUsers.length; i++) {
+        let listOfUsers = document.getElementById("listOfUsers");
+        let userEntry = document.createElement("li");
+        userEntry.setAttribute("class", "list-group-item d-flex justify-content-between align-items-center");
+        userEntry.setAttribute("userid", addedUsers[i].userId);
+        userEntry.appendChild(document.createTextNode(addedUsers[i].username));
+        listOfUsers.appendChild(userEntry);
+        let userDiv = document.createElement("div");
+        userDiv.setAttribute("class", "drop");
+        userEntry.appendChild(userDiv);
+        let dropdownButton = document.createElement("button");
+        let dropdownButtonClasses = "btn btn-secondary dropdown-toggle";
+        if (addedUsers[i].role == "Creator") {
+            dropdownButtonClasses += " disabled";
+        }
+        dropdownButton.setAttribute("id", "dropdownMenuButton");
+        dropdownButton.setAttribute("class", dropdownButtonClasses);
+        dropdownButton.setAttribute("data-toggle", "dropdown");
+        dropdownButton.setAttribute("aria-haspopup", "true");
+        dropdownButton.setAttribute("aria-expanded", "false");
+        dropdownButton.appendChild(document.createTextNode(addedUsers[i].role));
+        userDiv.appendChild(dropdownButton);
+        let dropdownMenu = document.createElement("div");
+        dropdownMenu.setAttribute("class", "dropdown-menu");
+        dropdownMenu.setAttribute("aria-labelledby", "dropdownMenuButton");
+        userDiv.appendChild(dropdownMenu);
+        let roles = ["Editor", "Reader"];
+        for (let j = 0; j < roles.length; j++) {
+            let roleDropdownItem = document.createElement("button");
+            roleDropdownItem.setAttribute("class", "dropdown-item userRole");
+            roleDropdownItem.appendChild(document.createTextNode(roles[j]));
+            dropdownMenu.appendChild(roleDropdownItem);
+        }
+        $(".userRole").on("click", function () {
+            let changedRole = $(this).text();
+            let userId = $(this).parents().eq(2).attr("userid");
+            $(this).parent().prev().text(changedRole);
+            connection.invoke("ChangeUserRole", userId, changedRole, groupName).catch(function (err) {
+                return console.error(err.toString());
+            });
+        });
+    }
+});
+
+/**
+ * Příkaz ze serveru ke změně role uživatele
+ */
+connection.on("changeUserRole", function (userId, role) {
+    let objects = canvas.getObjects();
+    if (role == "Reader") {
+        readMode = true;
+        fabric.Object.prototype.selectable = false;
+        for (let i = 0; i < objects.length; i++) {
+            objects[i].selectable = false;
+        }
+        $("#select_button").attr('disabled', true);
+        $("#draw_button").attr('disabled', true);
+        $("#straight_line_button").attr('disabled', true);
+        $("#text_button").attr('disabled', true);
+        $("#global-color-picker").spectrum({
+            disabled: true
+        });
+        $("#fileUpload_button").attr('disabled', true);
+        $("#clear_button").attr('disabled', true);
+        $("#share_button").attr('disabled', true);
+    }
+    else {
+        readMode = false;
+        fabric.Object.prototype.selectable = true;
+        for (let i = 0; i < objects.length; i++) {
+            objects[i].selectable = true;
+        }
+        $("#select_button").attr('disabled', false);
+        $("#draw_button").attr('disabled', false);
+        $("#straight_line_button").attr('disabled', false);
+        $("#text_button").attr('disabled', false);
+        $("#global-color-picker").spectrum({
+            disabled: false
+        });
+        $("#fileUpload_button").attr('disabled', false);
+        $("#clear_button").attr('disabled', false);
+        $("#share_button").attr('disabled', false);
+    }
+});
+
+/**
+ * Příkaz ze serveru ke změně přezdívky uživatele
+ */
+connection.on("changeUsername", function (userName, userId) {
+    $('li[userid="' + userId + '"]').contents()[0].data = userName;
+});
+
+/**
+ * Příkaz ze serveru k odstranění uživatele ze seznamu uživatelů
+ */
+connection.on("removeUserFromList", function (userId) {
+    $('li[userid="' + userId + '"]').remove();
+});
+
+/**
  * Příkaz ze serveru k vyčíštění canvasu všech uživatelů
  */
 connection.on("clearCanvas", function () {
@@ -712,7 +824,7 @@ connection.on("loadCanvas", function (jsonCanvas) {
  * Příkaz ze serveru k přidání objektu do canvasu všech uživatelů
  */
 connection.on("addObjects", function (jsonObjects) {
-    var addedObjects = JSON.parse(jsonObjects);
+    let addedObjects = JSON.parse(jsonObjects);
     for (let i = 0; i < addedObjects.length; i++) {
         fabric.util.enlivenObjects([addedObjects[i]], function (enlivenedObjects) {
             canvas.add(enlivenedObjects[0]);
@@ -725,7 +837,7 @@ connection.on("addObjects", function (jsonObjects) {
  * Příkaz ze serveru k vyčíštění označených objektů canvasu všech uživatelů
  */
 connection.on("deleteObjects", function (objectsId) {
-    var removedObjects = JSON.parse(objectsId);
+    let removedObjects = JSON.parse(objectsId);
     let objects = canvas.getObjects();
     for (let i = objects.length - 1; i > -1; i--) {
         if (removedObjects.includes(objects[i].id)) {
@@ -763,7 +875,7 @@ connection.on("importImage", function (imageAddress, guid) {
  * Příkaz se serveru k přesunutí objektů do horní nebo spodní vrstvy canvasu
  */
 connection.on("moveObjectsStack", function (objectsId, frontOrBack) {
-    var selectedObjects = JSON.parse(objectsId);
+    let selectedObjects = JSON.parse(objectsId);
     let objects = canvas.getObjects();
     if (frontOrBack == "front") {
         for (let i = 0; i < objects.length; i++) {
@@ -1273,7 +1385,7 @@ function undoRedoCanvasClear(undoOrRedo, jsonCanvas) {
  */
 function selectAllObjects() {
     canvas.discardActiveObject();
-    var selection = new fabric.ActiveSelection(canvas.getObjects(), {
+    let selection = new fabric.ActiveSelection(canvas.getObjects(), {
         canvas: canvas,
     });
     canvas.setActiveObject(selection);
@@ -1334,7 +1446,7 @@ function pasteObjects() {
         jsonObjects.push(clonedObjects.toJSON(["id"]));
     }
     undoStack.push({ action: "added", objects: groupEntries });
-    var json = JSON.stringify(jsonObjects)
+    let json = JSON.stringify(jsonObjects)
     connection.invoke("AddObjects", json, groupName).catch(function (err) {
         return console.error(err.toString());
     });

@@ -23,9 +23,19 @@ namespace WhiteBoard.Models
         /// <summary>
         /// Přidá uživatele k dané tabuli
         /// </summary>
+        /// <param name="board"></param>
+        /// <param name="user"></param>
+        public void AddUserToBoard(BoardModel board, UserModel user)
+        {
+            board.Users.Add(user);
+        }
+
+        /// <summary>
+        /// Přidá uživatele k dané tabuli
+        /// </summary>
         /// <param name="boardId"></param>
         /// <param name="user"></param>
-        public void AddUser(string boardId, UserModel user)
+        public void AddUserToBoard(string boardId, UserModel user)
         {
             FindBoardById(boardId).Users.Add(user);
         }
@@ -45,6 +55,11 @@ namespace WhiteBoard.Models
             return FindBoardById(boardId).Users.Find(x => x.UserId == userId);
         }
 
+        public UserModel FindUserByConnectionId(string boardId, string userConnectionId)
+        {
+            return FindBoardById(boardId).Users.Find(x => x.UserConnectionId == userConnectionId);
+        }
+
         /// <summary>
         /// Vyhledá tabuli podle jmena
         /// </summary>
@@ -55,14 +70,24 @@ namespace WhiteBoard.Models
             return ((List<BoardModel>)boards).Find(x => x.Name == name);
         }
 
+        public BoardModel FindBoardByUserConnectionId(string userConnectionId)
+        {
+            foreach (var board in boards)
+            {
+                foreach (var user in board.Users)
+                {
+                    if (user.UserConnectionId == userConnectionId)
+                    {
+                        return board;
+                    }
+                }
+            }
+            return null;
+        }
+
         public void ChangeBoardname(string boardId, string changedBoardname)
         {
             FindBoardById(boardId).Name = changedBoardname;
-        }
-
-        public void ChangeUsername(string boardId, string userId, string changedUsername)
-        {
-            FindUserById(boardId, userId).Username = changedUsername;
         }
 
         /// <summary>

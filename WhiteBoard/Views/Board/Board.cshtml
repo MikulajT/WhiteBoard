@@ -20,6 +20,7 @@
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <button class="dropdown-item" data-toggle="modal" data-target="#usernameChange">Change username</button>
+                        <button class="dropdown-item" data-toggle="modal" data-target="#listOfUsersWindow">List of users</button>
                     </div>
                 </li>
                 <li class="nav-item dropdown">
@@ -72,7 +73,7 @@
             <div class="divider" id="visible"></div>
             <div class="hr"><hr></div>
 
-            <button type="submit" class="button" onclick="document.getElementById('imageUpload').click();">
+            <button type="submit" class="button" id="fileUpload_button" onclick="document.getElementById('imageUpload').click();">
                 <img src="~/resources/image.png">
             </button>
             <input type="file" id="imageUpload" accept="image/*" hidden />
@@ -83,20 +84,20 @@
             </button>
             <div class="divider"></div>
 
-            <button type="submit" class="button" data-toggle="modal" data-target="#clear">
+            <button type="submit" class="button" id="clear_button" data-toggle="modal" data-target="#clear">
                 <img src="~/resources/clear.png">
             </button>
             <div class="divider" id="visible"></div>
             <div class="hr"><hr></div>
 
-            <button type="submit" class="button" data-toggle="modal" data-target="#link">
+            <button type="submit" class="button" id="share_button" data-toggle="modal" data-target="#link">
                 <img src="~/resources/share.png">
             </button>
         </div>
     </div>
     <div class="parent-menu tool-detail-menu" id="text-detail-menu">
         <div>
-            <input id="global-font-picker" type="text">    
+            <input id="global-font-picker" type="text">
             <input id="global-object-size" type="range" min="1" max="20" step="1" />
         </div>
     </div>
@@ -136,6 +137,39 @@
                     <input id="username" type="text" class="form-control" value="Anonymous" />
                     <input class="btn btn-primary" style="margin-top:15px;" type="button" value="Apply" data-dismiss="modal" onclick="changeUsername()" />
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal window - List of users-->
+<div class="modal fade" id="listOfUsersWindow" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">
+                    List of users
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <ul id="listOfUsers" class="list-group">
+                    @*<li class="list-group-item d-flex justify-content-between align-items-center">
+                            Anonymous
+                            <div class="drop">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Creator
+                                </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <button class="dropdown-item userRole" type="button">Creator</button>
+                                    <button class="dropdown-item userRole" type="button">Editor</button>
+                                    <button class="dropdown-item userRole" type="button">Reader</button>
+                                </div>
+                            </div>
+                        </li>*@
+                </ul>
             </div>
         </div>
     </div>
