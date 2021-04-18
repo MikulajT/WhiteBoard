@@ -47,8 +47,13 @@ namespace WhiteBoard.Hubs
             {
                 await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", board.Name);
             }
-            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users));
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }));
+            UserModel creator = repository.FindBoardCreator(groupName);
+            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users), true);
+            if (creator.UserConnectionId != Context.ConnectionId)
+            {
+                await Clients.Client(creator.UserConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), false);
+            }
+            await Clients.GroupExcept(groupName, Context.ConnectionId, creator.UserConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), true);
         }
 
         /// <summary>

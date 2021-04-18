@@ -60,6 +60,11 @@ namespace WhiteBoard.Models
             return FindBoardById(boardId).Users.Find(x => x.UserConnectionId == userConnectionId);
         }
 
+        public UserModel FindBoardCreator(string boardId)
+        {
+            return FindBoardById(boardId).Users.Find(x => x.Role == UserRole.Creator);
+        }
+
         /// <summary>
         /// Vyhledá tabuli podle jmena
         /// </summary>

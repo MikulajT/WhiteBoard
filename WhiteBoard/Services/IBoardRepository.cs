@@ -8,6 +8,7 @@
         BoardModel FindBoardById(string id);
         UserModel FindUserById(string boardId, string userId);
         UserModel FindUserByConnectionId(string boardId, string userConnectionId);
+        UserModel FindBoardCreator(string boardId);
         BoardModel FindBoardByName(string name);
         BoardModel FindBoardByUserConnectionId(string userConnectionId);
         void ChangeBoardname(string boardId, string changedBoardname);

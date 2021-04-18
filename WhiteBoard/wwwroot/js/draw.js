@@ -698,7 +698,7 @@ function copyURL() {
 /**
  * Příkaz ze serverů k přidání uživatelů/uživatele do seznamu uživatelů
  */
-connection.on("addUsersToList", function (user) {
+connection.on("addUsersToList", function (user, disableRoleAssign) {
     let addedUsers = JSON.parse(user);
     for (let i = 0; i < addedUsers.length; i++) {
         let listOfUsers = document.getElementById("listOfUsers");
@@ -708,11 +708,11 @@ connection.on("addUsersToList", function (user) {
         userEntry.appendChild(document.createTextNode(addedUsers[i].username));
         listOfUsers.appendChild(userEntry);
         let userDiv = document.createElement("div");
-        userDiv.setAttribute("class", "drop");
+        userDiv.setAttribute("class", "dropdown");
         userEntry.appendChild(userDiv);
         let dropdownButton = document.createElement("button");
         let dropdownButtonClasses = "btn btn-secondary dropdown-toggle";
-        if (addedUsers[i].role == "Creator") {
+        if (addedUsers[i].role == "Creator" || disableRoleAssign) {
             dropdownButtonClasses += " disabled";
         }
         dropdownButton.setAttribute("id", "dropdownMenuButton");
@@ -720,6 +720,7 @@ connection.on("addUsersToList", function (user) {
         dropdownButton.setAttribute("data-toggle", "dropdown");
         dropdownButton.setAttribute("aria-haspopup", "true");
         dropdownButton.setAttribute("aria-expanded", "false");
+        dropdownButton.setAttribute("data-display", "static");
         dropdownButton.appendChild(document.createTextNode(addedUsers[i].role));
         userDiv.appendChild(dropdownButton);
         let dropdownMenu = document.createElement("div");

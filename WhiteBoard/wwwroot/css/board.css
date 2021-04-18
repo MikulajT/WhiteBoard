@@ -189,4 +189,9 @@ div {
     font-size: 20px;
     border: 0;
     box-shadow: none;
+    width: 25%;
+    position: absolute;
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
 }
