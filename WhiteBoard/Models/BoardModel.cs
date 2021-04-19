@@ -6,6 +6,7 @@ namespace WhiteBoard.Models
     {
         public string BoardId { get; set; }
         public string Name { get; set; }
+        public string UniqueName { get; set; }
         public int Pin { get; set; }
         public List<UserModel> Users { get; set; }
     }

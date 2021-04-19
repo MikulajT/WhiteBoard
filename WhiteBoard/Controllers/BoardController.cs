@@ -7,7 +7,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using WhiteBoard.Hubs;
 using WhiteBoard.Models;
 
@@ -73,56 +75,39 @@ namespace WhiteBoard.Controllers
         public IActionResult SendEmail(EmailForm form)
         {
             BoardModel board = boardRepository.FindBoardById(form.Link.Split('/').Last());
-            string URL = "https://localhost:44313/Board/" + board.Name;
+            string URL = "https://localhost:44313/Access/" + board.UniqueName;
 
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("whiteboard@vsb.cz"));
-            message.To.Add(new MailboxAddress("marekbauer@centrum.cz"));
-            message.Subject = "Invite to WhiteBoard session!";
-
-
-            if (form.Pin)
+            using (var smtp = new SmtpClient("smtp.gmail.com", 587))
             {
-                message.Body = new TextPart("html")
+                //smtp.ServerCertificateValidationCallback = (s,c,h,e) => true;
+                smtp.EnableSsl = true;
+                smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+                smtp.UseDefaultCredentials = false;
+                smtp.Credentials = new NetworkCredential("whiteboardvsb@gmail.com", "Jednadva3");
+                MailMessage message = new MailMessage();
+                message.To.Add(new MailAddress("marek.bauer123@gmail.com"));
+                message.From = new MailAddress("whiteboardvsb@gmail.com");
+                message.Subject = "Invite to WhiteBoard session!";
+
+                if (form.Pin)
                 {
-                    Text = "<h1>Join whiteboard session here: </h1> <br />" +
-                        URL +
-                        "Connect with pincode: " + board.Pin.ToString()
-                };
-            }
-            else
-            {
-                message.Body = new TextPart("html")
+                    message.Body = "Join whiteboard session here: \n" +
+                            URL +
+                            "\nConnect with pincode: " + board.Pin.ToString();
+                }
+                else
                 {
-                    Text = "<h1>Join whiteboard session here: </h1> <br />" +
-                    form.Link
-                };
-            }
+                    message.Body = "Join whiteboard session here: \n" +
+                        form.Link;
+                }
 
-            //TODO pridat adresu serveru a prihlasovaci udaje po zarizeni hostingu
-            /*
-            using (var smtp = new SmtpClient())
-            {
-                smtp.Connect();
-                smtp.Authenticate();
                 smtp.Send(message);
-                smtp.Disconnect(true);
-            }
-            */
-
-            //return Redirect(form.Link);
-            if (form.Pin)
-            {
-                return RedirectToAction("Access", new { boardName = board.Name });
-            }
-            else
-            {
-                return Redirect(form.Link);
             }
 
+            return RedirectToAction("Board", new { boardId = board.BoardId});
         }
-        [Route("Access/{boardName}")]
-        public IActionResult Access(string boardName)
+        [Route("Access/{boardUName}")]
+        public IActionResult Access(string boardUName)
         {
             return View();
         }
@@ -135,7 +120,7 @@ namespace WhiteBoard.Controllers
             if (ModelState.IsValid)
             {
                 int pin = int.Parse(form.p1.ToString() + form.p2.ToString() + form.p3.ToString() + form.p4.ToString());
-                BoardModel board = boardRepository.FindBoardByName(name);
+                BoardModel board = boardRepository.FindBoardByUniqueName(name);
 
                 if (board != null)
                 {
@@ -157,7 +142,7 @@ namespace WhiteBoard.Controllers
             {
                 TempData["error"] = "Wrong fromat.";
             }
-            return RedirectToAction("Access", new { boardName = name });
+            return RedirectToAction("Access", new { boardUName = name });
         }
 
     }

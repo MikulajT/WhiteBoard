@@ -10,6 +10,7 @@
         UserModel FindUserByConnectionId(string boardId, string userConnectionId);
         UserModel FindBoardCreator(string boardId);
         BoardModel FindBoardByName(string name);
+        BoardModel FindBoardByUniqueName(string name);
         BoardModel FindBoardByUserConnectionId(string userConnectionId);
         void ChangeBoardname(string boardId, string changedBoardname);
         bool CompareBoardByPin(string boardId, int pin);

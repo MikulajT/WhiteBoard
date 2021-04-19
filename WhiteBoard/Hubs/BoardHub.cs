@@ -155,6 +155,7 @@ namespace WhiteBoard.Hubs
             {
                 BoardId = groupName,
                 Name = "",
+                UniqueName = "",
                 Pin = service.GenerateRoomPin(1000, 9999),
                 Users = new List<UserModel>()
             };

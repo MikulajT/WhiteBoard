@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace WhiteBoard.Models
 {
@@ -17,6 +18,17 @@ namespace WhiteBoard.Models
         /// <param name="board"></param>
         public void AddBoard(BoardModel board)
         {
+            if (boards.Count == 0)
+            {
+                board.UniqueName = "Board0";
+            }
+            else
+            {
+                int n = Int32.Parse(boards[(boards.Count - 1)].UniqueName.Split("Board")[1]); 
+                n++;
+                board.UniqueName = "Board" + n.ToString();
+            }
+
             boards.Add(board);
         }
 
@@ -73,6 +85,11 @@ namespace WhiteBoard.Models
         public BoardModel FindBoardByName(string name)
         {
             return ((List<BoardModel>)boards).Find(x => x.Name == name);
+        }
+
+        public BoardModel FindBoardByUniqueName(string uname)
+        {
+            return ((List<BoardModel>)boards).Find(x => x.UniqueName == uname);
         }
 
         public BoardModel FindBoardByUserConnectionId(string userConnectionId)
