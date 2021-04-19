@@ -18,8 +18,6 @@ namespace WhiteBoard.Hubs
             service = boardService;
         }
 
-        #region Messages to client
-
         /// <summary>
         /// Po připojení přiřadí uživatele ke skupině. Pokud skupina ještě neexistuje, tak ji vytvoří.
         /// </summary>
@@ -37,7 +35,7 @@ namespace WhiteBoard.Hubs
             bool boardExisted = true;
             if ((board = repository.FindBoardById(groupName)) == null)
             {
-                board = CreateBoard(groupName);
+                board = service.CreateBoard(groupName);
                 boardExisted = false;
                 user.Role = UserRole.Creator;
             }
@@ -144,25 +142,5 @@ namespace WhiteBoard.Hubs
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("moveObjectsStack", objectsId, frontOrBack);
         }
-
-        #endregion
-
-        #region Hub logic
-
-        private BoardModel CreateBoard(string groupName)
-        {
-            BoardModel board = new BoardModel()
-            {
-                BoardId = groupName,
-                Name = "",
-                UniqueName = "",
-                Pin = service.GenerateRoomPin(1000, 9999),
-                Users = new List<UserModel>()
-            };
-            repository.AddBoard(board);
-            return board;
-        }
-
-        #endregion
     }
 }

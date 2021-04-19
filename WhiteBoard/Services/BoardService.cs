@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 
 namespace WhiteBoard.Models
@@ -7,6 +8,26 @@ namespace WhiteBoard.Models
     public class BoardService : IBoardService
     {
         private const int BYTE_LENGTH = 16;
+        readonly private IBoardRepository repository;
+
+        public BoardService(IBoardRepository boardRepository)
+        {
+            repository = boardRepository;
+        }
+
+        public BoardModel CreateBoard(string groupName)
+        {
+            BoardModel board = new BoardModel()
+            {
+                BoardId = groupName,
+                Name = "",
+                UniqueName = "",
+                Pin = GenerateRoomPin(1000, 9999),
+                Users = new List<UserModel>()
+            };
+            repository.AddBoard(board);
+            return board;
+        }
 
         /// <summary>
         /// Vygeneruje pin o určitém počtu cifer podle rozsahu.
