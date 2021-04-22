@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using MimeKit;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -47,7 +46,7 @@ namespace WhiteBoard.Controllers
         /// tak uvolní místo odebráním nejstaršího souboru
         /// </summary>
         [HttpPost]
-        public void UploadImage()
+        public IActionResult UploadImage()
         {
             if (HttpContext.Request.Form.Files != null && HttpContext.Request.Form.Files[0].ContentType.Contains("image"))
             {
@@ -69,10 +68,12 @@ namespace WhiteBoard.Controllers
                     FileSystemInfo fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos().OrderBy(fi => fi.CreationTime).First();
                     System.IO.File.Delete(fileInfo.FullName);
                 }
+                return Ok();
             }
+            return BadRequest();
         }
 
-        public IActionResult SendEmail(EmailForm form)
+        public void SendEmail(EmailForm form)
         {
             BoardModel board = boardRepository.FindBoardById(form.Link.Split('/').Last());
             string URL = "https://localhost:44313/Access/" + board.UniqueName;
@@ -85,7 +86,7 @@ namespace WhiteBoard.Controllers
                 smtp.UseDefaultCredentials = false;
                 smtp.Credentials = new NetworkCredential("whiteboardvsb@gmail.com", "Jednadva3");
                 MailMessage message = new MailMessage();
-                message.To.Add(new MailAddress("marek.bauer123@gmail.com"));
+                message.To.Add(new MailAddress(form.Email));
                 message.From = new MailAddress("whiteboardvsb@gmail.com");
                 message.Subject = "Invite to WhiteBoard session!";
 
@@ -103,8 +104,6 @@ namespace WhiteBoard.Controllers
 
                 smtp.Send(message);
             }
-
-            return RedirectToAction("Board", new { boardId = board.BoardId});
         }
         [Route("Access/{boardUName}")]
         public IActionResult Access(string boardUName)

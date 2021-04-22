@@ -1,4 +1,10 @@
-﻿let connection = new signalR.HubConnectionBuilder().withUrl("/drawDotHub").build();
+﻿let connection = new signalR
+                .HubConnectionBuilder()
+                .withUrl("/drawDotHub")
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
 let groupName;
 
 let selectMode = false;
@@ -36,6 +42,22 @@ let canvas = new fabric.Canvas("canvas", {
     height: window.screen.height
 });
 fabric.Object.prototype.lockScalingFlip = true;
+
+/**
+ * Notifikace o úspěšném odeslaní mailu
+ */
+var onSuccess = function () {
+    $("#success-toast-body").text("Board invitation was successfully sent.");
+    $("#success-toast").toast("show");
+    $("#link").modal("hide");
+};
+
+/**
+ * Notifikace o uploadnutí souboru nepodporovaného typu
+ */
+function unsupportedFileType () {
+    $("#failure-toast").toast("show");
+};
 
 /**
  * Požadavek na server ke změně přezdívky uživatele
@@ -529,20 +551,19 @@ $("#imageUpload").change(function () {
         fileData.append("group", groupName);
 
         $.ajax({
-            url: "/Room/UploadImage",
+            url: "/Board/UploadImage",
             type: "POST",
             contentType: false, // Not to set any content header
             processData: false, // Not to process data
             data: fileData,
-            success: function () {
-                console.log("Image uploaded.");
-            },
             error: function (err) {
-                alert(err.statusText);
+                unsupportedFileType();
             }
         });
+        //Je třeba provést kvůli eventu .change (nejde nahrát stejný obrázek 2x)
+        $("#imageUpload").val("");
     } else {
-        alert("FormData is not supported.");
+        unsupportedFileType();
     }
 });
 
@@ -581,7 +602,6 @@ function saveProject(el) {
  */
 $(document).on('change', '#projectUpload', function (event) {
     let reader = new FileReader();
-
     reader.onload = function (event) {
         let jsonObj = JSON.parse(event.target.result);
         canvas.loadFromJSON(jsonObj);
@@ -589,8 +609,12 @@ $(document).on('change', '#projectUpload', function (event) {
             return console.error(err.toString());
         });
     }
-
-    reader.readAsText(event.target.files[0]);
+    if (event.target.files[0].type == "application/json") {
+        reader.readAsText(event.target.files[0]);
+    }
+    else {
+        unsupportedFileType();
+    }
 });
 
 
@@ -791,6 +815,8 @@ connection.on("changeUserRole", function (userId, role) {
  */
 connection.on("changeUsername", function (userName, userId) {
     $('li[userid="' + userId + '"]').contents()[0].data = userName;
+    $("#success-toast-body").text("Username was successfully changed.");
+    $("#success-toast").toast("show");
 });
 
 /**
@@ -1037,7 +1063,7 @@ function deleteActiveObjects() {
         connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
             return console.error(err.toString());
         });
-    }
+    }      
 }
 
 /**
@@ -1125,11 +1151,11 @@ function mouseDown(e) {
 function mouseUp(e) {
     let activeObjects = canvas.getActiveObjects();
     if (activeObjects.length == 1) {
-        if (activeObjects[0].get("type") == "i-text" &&
-            activeObjects[0].text == "") {
+        if ((activeObjects[0].get("type") == "i-text" &&
+            activeObjects[0].text == "") ||
+            activeObjects[0].get("type") == "image") {
             return;
         }
-
         if (activeObjects[0].get("type") == "i-text") {
             document.getElementById("object-font-picker-container").style.display = "inline-block";
             $('#object-font-picker').trigger('setFont', activeObjects[0].fontFamily);
