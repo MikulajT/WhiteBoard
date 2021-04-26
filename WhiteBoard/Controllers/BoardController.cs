@@ -31,7 +31,15 @@ namespace WhiteBoard.Controllers
 
         [Route("Board/{boardId}")]
         public IActionResult Board(string boardId)
-        {
+        {          
+            if(Request.Cookies["theme"] == null)
+            {
+                CookieOptions cookies = new CookieOptions();
+                cookies.Expires = DateTime.Now.AddDays(1);
+
+                Response.Cookies.Append("theme", "true", cookies);
+            }
+                    
             return View();
         }
 
@@ -142,6 +150,18 @@ namespace WhiteBoard.Controllers
                 TempData["error"] = "Wrong fromat.";
             }
             return RedirectToAction("Access", new { boardUName = name });
+        }
+
+
+        [HttpPost]
+        public IActionResult SetTheme(string data, string url)
+        {
+            CookieOptions cookies = new CookieOptions();
+            cookies.Expires = DateTime.Now.AddDays(1);
+
+            Response.Cookies.Append("theme", data, cookies);
+
+            return Redirect(url);
         }
 
     }

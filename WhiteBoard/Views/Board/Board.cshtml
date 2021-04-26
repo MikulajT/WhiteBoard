@@ -1,12 +1,28 @@
-﻿@{
+﻿
+@inject IHttpContextAccessor httpContextAccessor
+
+@{
     Layout = "_BoardLayout";
     ViewData["Title"] = "Home Page";
 }
 @model WhiteBoard.Models.EmailForm
+
+@{
+    var theme = httpContextAccessor.HttpContext.Request.Cookies["theme"];
+
+    if (theme == "true")
+    {
+        <link rel="stylesheet" type="text/css" href="~/css/board.css">
+    }
+    else
+    {
+        <link rel="stylesheet" type="text/css" href="~/css/boardD.css">
+    }
+}
+
 <link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
 <link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
 <link rel="stylesheet" type="text/css" href="~/css/jquery.fontselect.css">
-<link rel="stylesheet" type="text/css" href="~/css/board.css">
 
 <div>
     <nav class="navbar navbar-expand navbar-light bg-white">
@@ -40,6 +56,22 @@
             <input type="text" id="boardName" style="margin: auto;" size="18" placeholder="Change board name..." onchange="changeBoardname(this.value)">
         </div>
     </nav>
+    @{
+        if (theme == "true")
+        {
+            <label class="switch">
+                <input type="checkbox" id="theme" checked>
+                <span class="slider round"></span>
+            </label>
+        }
+        else
+        {
+            <label class="switch">
+                <input type="checkbox" id="theme">
+                <span class="slider round"></span>
+            </label>
+        }
+    }
 
     <div class="parent-menu" id="tool-menu">
         <div>
@@ -257,7 +289,18 @@
         Unsupported file type.
     </div>
 </div>
+@{
+    if (theme == "false")
+    {
+    <script>
+        var event = new Event('input');
 
+        var color = document.getElementById("global-color-picker").value = "#ffffff";
+        color.click();
+
+    </script>
+    }
+}
 <script src="~/lib/jquery/dist/jquery.js"></script>
 <script src="~/lib/microsoft-signalr/signalr.js"></script>
 <script src="~/lib/fabricjs/fabric.min.js"></script>
@@ -267,3 +310,4 @@
 <script defer src="~/js/jquery.fontselect.js"></script>
 <script defer src="~/js/draw.js"></script>
 <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
+

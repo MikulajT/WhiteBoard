@@ -22,6 +22,7 @@ let clonedObjects;
 let straightLine;
 let currentFont = "Helvetica";
 let readMode = false;
+document.getElementById("Link").value = window.location.href;
 
 /**
  * Vytvoření spojení se serverem
@@ -619,6 +620,25 @@ $(document).on('change', '#projectUpload', function (event) {
 
 
 /**
+ * Event - Zmena barevneho modu 
+ */
+$('#theme').on("change", function()
+{
+    if ($('#theme').is(":checked")) {
+        var item = "true";
+    }
+    else {
+        var item = "false";
+    }
+    var link = window.location.href;
+    $.post("/Board/SetTheme",
+        {
+            data: item,
+            url : link
+        });
+});
+
+/**
  * Event - vložení textu
  */
 canvas.on("mouse:down", function (event) {
@@ -712,7 +732,7 @@ $('#pin').modal({
 $('#pin').modal('show');
 
 document.getElementById("input_link").value = window.location.href;
-document.getElementById("Link").value = window.location.href;
+
 function copyURL() {
     let copyText = document.getElementById("input_link");
     copyText.select();
