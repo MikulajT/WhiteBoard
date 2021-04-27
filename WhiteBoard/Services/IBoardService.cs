@@ -2,8 +2,10 @@
 {
     public interface IBoardService
     {
-        BoardModel CreateBoard(string groupName);
         int GenerateRoomPin(int valueFrom, int valueTo);
         string GenerateBoardId();
+        BoardModel CreateBoard(string groupName);
+        UserModel CreateUser(string userId, string userConnectionId, BoardModel board, bool boardExisted);
+        bool isBoardEmpty(BoardModel board);
     }
 }

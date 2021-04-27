@@ -1,8 +1,8 @@
 ﻿let connection = new signalR
                 .HubConnectionBuilder()
                 .withUrl("/drawDotHub")
-                .withAutomaticReconnect()
-                .configureLogging(signalR.LogLevel.Information)
+                //.withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Debug)
                 .build();
 
 let groupName;
@@ -65,6 +65,8 @@ function unsupportedFileType () {
  */
 function changeUsername() {
     let changedUsername = $("#username").val();
+    $("#success-toast-body").text("Username was successfully changed.");
+    $("#success-toast").toast("show");
     connection.invoke("ChangeUsername", changedUsername, groupName).catch(function (err) {
         return console.error(err.toString());
     });
@@ -792,7 +794,7 @@ connection.on("addUsersToList", function (user, disableRoleAssign) {
 /**
  * Příkaz ze serveru ke změně role uživatele
  */
-connection.on("changeUserRole", function (userId, role) {
+connection.on("changeUserRole", function (role) {
     let objects = canvas.getObjects();
     if (role == "Reader") {
         readMode = true;
@@ -831,12 +833,10 @@ connection.on("changeUserRole", function (userId, role) {
 });
 
 /**
- * Příkaz ze serveru ke změně přezdívky uživatele
+ * Změní hodnote role uživatele v seznamu uživatelů
  */
-connection.on("changeUsername", function (userName, userId) {
-    $('li[userid="' + userId + '"]').contents()[0].data = userName;
-    $("#success-toast-body").text("Username was successfully changed.");
-    $("#success-toast").toast("show");
+connection.on("changeUserRoleInList", function (userId, userRole) {
+    $('li[userid="' + userId + '"]').children('div').children('button').contents()[0].nodeValue = userRole;
 });
 
 /**
@@ -844,6 +844,13 @@ connection.on("changeUsername", function (userName, userId) {
  */
 connection.on("removeUserFromList", function (userId) {
     $('li[userid="' + userId + '"]').remove();
+});
+
+/**
+ * Příkaz ze serveru ke změně přezdívky uživatele
+ */
+connection.on("changeUsername", function (userName, userId) {
+    $('li[userid="' + userId + '"]').contents()[0].data = userName;
 });
 
 /**
@@ -966,8 +973,7 @@ function pathCreated(e) {
     objWithId.id = generateGUID();
     let undoEntry = { action: "added", objects: [{ id: objWithId.id }] };
     undoStack.push(undoEntry);
-    objWithId = objWithId.toJSON(["id"]);
-    connection.invoke("AddObjects", JSON.stringify([objWithId]), groupName).catch(function (err) {
+    connection.invoke("AddObjects", JSON.stringify([objWithId.toJSON(["id"])]), groupName).catch(function (err) {
         return console.error(err.toString());
     });
 }

@@ -24,7 +24,7 @@ namespace WhiteBoard.Models
             }
             else
             {
-                int n = Int32.Parse(boards[(boards.Count - 1)].UniqueName.Split("Board")[1]); 
+                int n = Int32.Parse(boards[(boards.Count - 1)].UniqueName.Split("Board")[1]);
                 n++;
                 board.UniqueName = "Board" + n.ToString();
             }
@@ -32,24 +32,9 @@ namespace WhiteBoard.Models
             boards.Add(board);
         }
 
-        /// <summary>
-        /// Přidá uživatele k dané tabuli
-        /// </summary>
-        /// <param name="board"></param>
-        /// <param name="user"></param>
-        public void AddUserToBoard(BoardModel board, UserModel user)
+        public void AddUser(BoardModel board, UserModel user)
         {
             board.Users.Add(user);
-        }
-
-        /// <summary>
-        /// Přidá uživatele k dané tabuli
-        /// </summary>
-        /// <param name="boardId"></param>
-        /// <param name="user"></param>
-        public void AddUserToBoard(string boardId, UserModel user)
-        {
-            FindBoardById(boardId).Users.Add(user);
         }
 
         /// <summary>
@@ -57,19 +42,29 @@ namespace WhiteBoard.Models
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public BoardModel FindBoardById(string id)
+        public BoardModel FindBoardById(string boardId)
         {
-            return ((List<BoardModel>)boards).Find(x => x.BoardId == id);
+            return ((List<BoardModel>)boards).Find(x => x.BoardId == boardId);
         }
 
-        public UserModel FindUserById(string boardId, string userId)
+        public UserModel FindUserById(BoardModel board, string userId)
         {
-            return FindBoardById(boardId).Users.Find(x => x.UserId == userId);
+            return board.Users.Find(x => x.UserId == userId);
         }
 
-        public UserModel FindUserByConnectionId(string boardId, string userConnectionId)
+        public UserModel FindUserByConnectionId(BoardModel board, string userConnectionId)
         {
-            return FindBoardById(boardId).Users.Find(x => x.UserConnectionId == userConnectionId);
+            foreach (var user in board.Users)
+            {
+                foreach (var connectionId in user.UserConnectionIds)
+                {
+                    if (connectionId == userConnectionId)
+                    {
+                        return user;
+                    }
+                }
+            }
+            return null;
         }
 
         public UserModel FindBoardCreator(string boardId)
@@ -98,13 +93,19 @@ namespace WhiteBoard.Models
             {
                 foreach (var user in board.Users)
                 {
-                    if (user.UserConnectionId == userConnectionId)
-                    {
-                        return board;
-                    }
+                    foreach (var connectionId in user.UserConnectionIds)
+                        if (connectionId == userConnectionId)
+                        {
+                            return board;
+                        }
                 }
             }
             return null;
+        }
+
+        public void RemoveBoard(BoardModel board)
+        {
+            boards.Remove(board);
         }
 
         public void ChangeBoardname(string boardId, string changedBoardname)

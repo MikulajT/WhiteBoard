@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using ReturnTrue.AspNetCore.Identity.Anonymous;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WhiteBoard.Models;
@@ -9,49 +11,55 @@ namespace WhiteBoard.Hubs
 {
     public class BoardHub : Hub
     {
-        readonly private IBoardRepository repository;
-        readonly private IBoardService service;
+        readonly private IBoardRepository _boardRepository;
+        readonly private IBoardService _boardService;
 
-        public BoardHub(IBoardRepository boardRepository, IBoardService boardService)
+        public BoardHub(IBoardRepository boardRepository, IBoardService board_boardService)
         {
-            repository = boardRepository;
-            service = boardService;
+            _boardRepository = boardRepository;
+            _boardService = board_boardService;
         }
 
         /// <summary>
-        /// Po připojení přiřadí uživatele ke skupině. Pokud skupina ještě neexistuje, tak ji vytvoří.
+        /// Inicializace připojení uživatele.
         /// </summary>
         /// <param name="groupName"></param>
         public async Task StartUserConnection(string groupName)
         {
-            UserModel user = new UserModel()
-            {
-                UserId = Guid.NewGuid().ToString(),
-                Username = "Anonymous",
-                Role = UserRole.Editor,
-                UserConnectionId = Context.ConnectionId
-            };
             BoardModel board;
+            UserModel user;
             bool boardExisted = true;
-            if ((board = repository.FindBoardById(groupName)) == null)
+            string userId = ((IAnonymousIdFeature)Context.GetHttpContext().Features[typeof(IAnonymousIdFeature)]).AnonymousId;
+            if ((board = _boardRepository.FindBoardById(groupName)) == null)
             {
-                board = service.CreateBoard(groupName);
+                board = _boardService.CreateBoard(groupName);
+                _boardRepository.AddBoard(board);
                 boardExisted = false;
-                user.Role = UserRole.Creator;
+            }
+            if ((user = _boardRepository.FindUserById(board, userId)) == null)
+            {
+                user = _boardService.CreateUser(userId, Context.ConnectionId, board, boardExisted);
+                _boardRepository.AddUser(board, user);
+            }
+            else
+            {
+                user.UserConnectionIds.Add(Context.ConnectionId);
             }
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            repository.AddUserToBoard(board, user);
             if (boardExisted && board.Name != "")
             {
                 await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", board.Name);
             }
-            UserModel creator = repository.FindBoardCreator(groupName);
-            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users), true);
-            if (creator.UserConnectionId != Context.ConnectionId)
+            UserModel creator = _boardRepository.FindBoardCreator(groupName);
+            string creatorId = creator == null ? null : creator.UserId;
+            var creatorConnectionIds = creator == null ? null : creator.UserConnectionIds;
+            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users.Where(user => user.UserConnectionIds.Count > 0)), true);
+            if (creatorId != user.UserId)
             {
-                await Clients.Client(creator.UserConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), false);
+                await Clients.Clients(creatorConnectionIds).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), false);
             }
-            await Clients.GroupExcept(groupName, Context.ConnectionId, creator.UserConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), true);
+            await Clients.GroupExcept(groupName, user.UserConnectionIds.Concat(creatorConnectionIds).ToList())
+                  .SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), true);
         }
 
         /// <summary>
@@ -59,12 +67,17 @@ namespace WhiteBoard.Hubs
         /// </summary>
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            BoardModel board = repository.FindBoardByUserConnectionId(Context.ConnectionId);
+            BoardModel board = _boardRepository.FindBoardByUserConnectionId(Context.ConnectionId);
             if (board != null)
             {
-                UserModel user = repository.FindUserByConnectionId(board.BoardId, Context.ConnectionId);
+                UserModel user = _boardRepository.FindUserByConnectionId(board, Context.ConnectionId);
                 await Clients.Group(board.BoardId).SendAsync("removeUserFromList", user.UserId);
-                board.Users.Remove(repository.FindUserById(board.BoardId, user.UserId));
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, board.BoardId);
+                user.UserConnectionIds.Remove(Context.ConnectionId);
+                if (_boardService.isBoardEmpty(board))
+                {
+                    _boardRepository.RemoveBoard(board);
+                }
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -82,7 +95,7 @@ namespace WhiteBoard.Hubs
         /// </summary>
         public async Task ChangeBoardname(string changedBoardname, string groupName)
         {
-            repository.ChangeBoardname(groupName, changedBoardname);
+            _boardRepository.ChangeBoardname(groupName, changedBoardname);
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeBoardname", changedBoardname);
         }
 
@@ -91,16 +104,19 @@ namespace WhiteBoard.Hubs
         /// </summary>
         public async Task ChangeUsername(string changedUsername, string groupName)
         {
-            UserModel user = repository.FindUserByConnectionId(groupName, Context.ConnectionId);
+            BoardModel board = _boardRepository.FindBoardById(groupName);
+            UserModel user = _boardRepository.FindUserByConnectionId(board, Context.ConnectionId);
             user.Username = changedUsername;
             await Clients.Group(groupName).SendAsync("changeUsername", user.Username, user.UserId);
         }
 
         public async Task ChangeUserRole(string userId, string role, string groupName)
         {
-            UserModel user = repository.FindUserById(groupName, userId);
+            BoardModel board = _boardRepository.FindBoardById(groupName);
+            UserModel user = _boardRepository.FindUserById(board, userId);
             user.Role = (UserRole)Enum.Parse(typeof(UserRole), role);
-            await Clients.Client(user.UserConnectionId).SendAsync("changeUserRole", userId, user.Role.ToString());
+            await Clients.Client(user.UserConnectionIds[0]).SendAsync("changeUserRole", user.Role.ToString());
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeUserRoleInList", userId, user.Role.ToString());
         }
 
         /// <summary>

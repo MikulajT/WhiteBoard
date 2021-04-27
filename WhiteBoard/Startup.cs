@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ReturnTrue.AspNetCore.Identity.Anonymous;
 using WhiteBoard.Hubs;
 
 namespace WhiteBoard
@@ -45,11 +46,9 @@ namespace WhiteBoard
             }
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
-
             app.UseAuthorization();
-
+            app.UseAnonymousId();
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(

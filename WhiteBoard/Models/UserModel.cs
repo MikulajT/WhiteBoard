@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace WhiteBoard.Models
 {
@@ -15,7 +16,10 @@ namespace WhiteBoard.Models
         public UserRole Role { get; set; }
 
         [JsonIgnore]
-        public string UserConnectionId { get; set; }
+        public List<BoardModel> Boards { get; set; }
+
+        [JsonIgnore]
+        public List<string> UserConnectionIds { get; set; }
     }
 
     public enum UserRole
