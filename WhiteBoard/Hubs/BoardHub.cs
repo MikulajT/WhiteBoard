@@ -29,6 +29,7 @@ namespace WhiteBoard.Hubs
             BoardModel board;
             UserModel user;
             bool boardExisted = true;
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             string userId = ((IAnonymousIdFeature)Context.GetHttpContext().Features[typeof(IAnonymousIdFeature)]).AnonymousId;
             if ((board = _boardRepository.FindBoardById(groupName)) == null)
             {
@@ -44,22 +45,30 @@ namespace WhiteBoard.Hubs
             else
             {
                 user.UserConnectionIds.Add(Context.ConnectionId);
-            }
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            if (boardExisted && board.Name != "")
-            {
-                await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", board.Name);
+                if (user.Role == UserRole.Reader)
+                {
+                    await Clients.Client(Context.ConnectionId).SendAsync("changeUserRole", "Reader");
+                }
             }
             UserModel creator = _boardRepository.FindBoardCreator(groupName);
             string creatorId = creator == null ? null : creator.UserId;
             var creatorConnectionIds = creator == null ? null : creator.UserConnectionIds;
-            await Clients.Client(Context.ConnectionId).SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users.Where(user => user.UserConnectionIds.Count > 0)), true);
+            await Clients.Client(Context.ConnectionId)
+            .SendAsync("addUsersToList", JsonSerializer.Serialize(board.Users.Where(user => user.IsActive)), user.Role != UserRole.Creator);
             if (creatorId != user.UserId)
             {
-                await Clients.Clients(creatorConnectionIds).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), false);
+                if (user.UserConnectionIds.Count == 1)
+                {
+                    await Clients.Clients(creatorConnectionIds).SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), false);
+                }
+                await Clients.Clients(Context.ConnectionId).SendAsync("disableBoardNameChange");
             }
             await Clients.GroupExcept(groupName, user.UserConnectionIds.Concat(creatorConnectionIds).ToList())
                   .SendAsync("addUsersToList", JsonSerializer.Serialize(new List<UserModel>() { user }), true);
+            if (boardExisted && board.Name != "")
+            {
+                await Clients.Client(Context.ConnectionId).SendAsync("changeBoardname", board.Name);
+            }
         }
 
         /// <summary>
@@ -71,9 +80,12 @@ namespace WhiteBoard.Hubs
             if (board != null)
             {
                 UserModel user = _boardRepository.FindUserByConnectionId(board, Context.ConnectionId);
-                await Clients.Group(board.BoardId).SendAsync("removeUserFromList", user.UserId);
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, board.BoardId);
                 user.UserConnectionIds.Remove(Context.ConnectionId);
+                if (user.UserConnectionIds.Count == 0)
+                {
+                    await Clients.Group(board.BoardId).SendAsync("removeUserFromList", user.UserId);
+                }
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, board.BoardId);
                 if (_boardService.isBoardEmpty(board))
                 {
                     _boardRepository.RemoveBoard(board);
@@ -115,7 +127,7 @@ namespace WhiteBoard.Hubs
             BoardModel board = _boardRepository.FindBoardById(groupName);
             UserModel user = _boardRepository.FindUserById(board, userId);
             user.Role = (UserRole)Enum.Parse(typeof(UserRole), role);
-            await Clients.Client(user.UserConnectionIds[0]).SendAsync("changeUserRole", user.Role.ToString());
+            await Clients.Clients(user.UserConnectionIds).SendAsync("changeUserRole", user.Role.ToString());
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("changeUserRoleInList", userId, user.Role.ToString());
         }
 

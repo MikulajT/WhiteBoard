@@ -20,6 +20,15 @@ namespace WhiteBoard.Models
 
         [JsonIgnore]
         public List<string> UserConnectionIds { get; set; }
+
+        [JsonIgnore]
+        public bool IsActive
+        {
+            get
+            {
+                return UserConnectionIds.Count > 0;
+            }
+        }
     }
 
     public enum UserRole

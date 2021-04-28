@@ -868,6 +868,13 @@ connection.on("changeBoardname", function (changedBoardName) {
 });
 
 /**
+ * Příkaz ze serveru ke zamezení změny názvu tabule
+ */
+connection.on("disableBoardNameChange", function () {
+    $("#boardName").attr('disabled', true);
+});
+
+/**
  * Příkaz ze serveru k načtení canvasu z JSONu
  */
 connection.on("loadCanvas", function (jsonCanvas) {
