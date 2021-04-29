@@ -15,5 +15,6 @@ namespace WhiteBoard.Models
 
         [Display(Name = "Share with pincode?")]
         public bool Pin { get; set; }
+        public bool Theme { get; set; }
     }
 }

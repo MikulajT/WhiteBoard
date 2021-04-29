@@ -154,15 +154,14 @@ namespace WhiteBoard.Controllers
 
 
         [HttpPost]
-        public IActionResult SetTheme(string data, string url)
+        public IActionResult SetTheme(EmailForm form)
         {
             CookieOptions cookies = new CookieOptions();
             cookies.Expires = DateTime.Now.AddDays(1);
 
-            Response.Cookies.Append("theme", data, cookies);
+            Response.Cookies.Append("theme", form.Theme.ToString().ToLower(), cookies);
 
-            return Redirect(url);
+            return RedirectToAction("Board", new { boardId = form.Link.Split('/').Last() });
         }
-
     }
 }

@@ -59,17 +59,29 @@
     @{
         if (theme == "true")
         {
-            <label class="switch">
-                <input type="checkbox" id="theme" checked>
-                <span class="slider round"></span>
-            </label>
+            @using (Html.BeginForm("SetTheme", "Board", FormMethod.Post))
+            {
+                <label class="switch">
+                    <input class="form-control" type="checkbox" onchange="this.form.submit();" checked>
+
+                    <span class="slider round"></span>
+                </label>
+                <input class="form-control" id="Theme" name="Theme" type="hidden" value="false" />
+                <input class="form-control" id="Link" name="Link" type="hidden" />
+            }
         }
         else
         {
-            <label class="switch">
-                <input type="checkbox" id="theme">
-                <span class="slider round"></span>
-            </label>
+            @using (Html.BeginForm("SetTheme", "Board", FormMethod.Post))
+            {
+                <label class="switch">
+                    <input class="form-control" type="checkbox" onchange="this.form.submit();">
+
+                    <span class="slider round"></span>
+                </label>
+                <input class="form-control" id="Theme" name="Theme" type="hidden" value="true" />
+                <input class="form-control" id="Link" name="Link" type="hidden" />
+            }
         }
     }
 
@@ -100,8 +112,16 @@
                 <img src="~/resources/text.png">
             </button>
             <div class="divider"></div>
-
-            <input id="global-color-picker" type="color" value="#000000" />
+            @{
+                if (theme == "true")
+                {
+                    <input id="global-color-picker" type="color" value="#000000" />
+                }
+                else
+                {
+                    <input id="global-color-picker" type="color" value="#fffffe" />
+                }
+            }
             <div class="divider" id="visible"></div>
             <div class="hr"><hr></div>
 
@@ -289,18 +309,7 @@
         Unsupported file type.
     </div>
 </div>
-@{
-    if (theme == "false")
-    {
-        <script>
-            var event = new Event('input');
 
-            var color = document.getElementById("global-color-picker").value = "#ffffff";
-            color.click();
-
-        </script>
-    }
-}
 <script src="~/lib/jquery/dist/jquery.js"></script>
 <script src="~/lib/microsoft-signalr/signalr.js"></script>
 <script src="~/lib/fabricjs/fabric.min.js"></script>
@@ -308,6 +317,17 @@
 <script defer src="~/js/jquery.ui.position.min.js"></script>
 <script defer src="~/js/spectrum.js"></script>
 <script defer src="~/js/jquery.fontselect.js"></script>
-<script defer src="~/js/draw.js"></script>
 <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
 
+@{
+    if (theme == "false")
+    {
+        <script defer src="~/js/drawD.js">
+            $("#global-color-picker").spectrum("set", "#fffffe");
+        </script>        
+    }
+    else
+    {
+        <script defer src="~/js/draw.js"></script>
+    }
+}

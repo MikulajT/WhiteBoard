@@ -43,6 +43,7 @@ let canvas = new fabric.Canvas("canvas", {
     height: window.screen.height
 });
 fabric.Object.prototype.lockScalingFlip = true;
+canvas.freeDrawingBrush.color = "#ffffff";
 
 /**
  * Notifikace o úspěšném odeslaní mailu
@@ -99,7 +100,8 @@ $("#global-color-picker").spectrum({
     showAlpha: false,
     allowEmpty: false,
     showButtons: false,
-    showPaletteOnly: true
+    showPaletteOnly: true,
+    color: "#fffffe"
 });
 
 /*
@@ -618,6 +620,26 @@ $(document).on('change', '#projectUpload', function (event) {
     else {
         unsupportedFileType();
     }
+});
+
+
+/**
+ * Event - Zmena barevneho modu 
+ */
+$('#theme').on("change", function()
+{
+    if ($('#theme').is(":checked")) {
+        var item = "true";
+    }
+    else {
+        var item = "false";
+    }
+    var link = window.location.href;
+    $.post("/Board/SetTheme",
+        {
+            data: item,
+            url : link
+        });
 });
 
 /**
