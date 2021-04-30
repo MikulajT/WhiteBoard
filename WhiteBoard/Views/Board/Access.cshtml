@@ -9,7 +9,7 @@
 <link rel="stylesheet" type="text/css" href="~/css/board.css">
 
 <div>
-    <canvas id="canvas" class="context-menu"></canvas>
+    <canvas id="canvas" class="context-menu" onload="document.getElementById('1').focus();"></canvas>
 </div>
 
 <!-- Modal window - copy link-->
@@ -42,7 +42,10 @@
         </div>
     </div>
 </div>
+<script>
+    setTimeout(function () { document.getElementById('1').focus() }, 1000);
 
+</script>
 
 
 <script src="~/lib/jquery/dist/jquery.js"></script>

@@ -322,7 +322,7 @@ function changeDrawingMode() {
         if (dragMode) changeDragMode();
         if (straightLineMode) changeStraightLineMode();
     }
-    else {
+    else {       
         drawingMode = false;
         canvas.isDrawingMode = false;
         canvas.defaultCursor = "default";
@@ -342,7 +342,7 @@ function changeStraightLineMode() {
         if (textMode) changetextMode();
         if (dragMode) changeDragMode();
     }
-    else {
+    else {      
         canvas.forEachObject(function (object) {
             object.selectable = true;
             object.setCoords()
@@ -369,7 +369,7 @@ function changetextMode() {
         if (dragMode) changeDragMode();
         if (straightLineMode) changeStraightLineMode();
     }
-    else {
+    else {      
         textMode = false;
         canvas.defaultCursor = "default";
         document.getElementById("text_button").style.backgroundColor = "white";

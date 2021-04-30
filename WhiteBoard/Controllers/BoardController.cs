@@ -94,20 +94,23 @@ namespace WhiteBoard.Controllers
                 smtp.UseDefaultCredentials = false;
                 smtp.Credentials = new NetworkCredential("whiteboardvsb@gmail.com", "Jednadva3");
                 MailMessage message = new MailMessage();
+                message.IsBodyHtml = true;
                 message.To.Add(new MailAddress(form.Email));
                 message.From = new MailAddress("whiteboardvsb@gmail.com");
                 message.Subject = "Invite to WhiteBoard session!";
 
                 if (form.Pin)
                 {
-                    message.Body = "Join whiteboard session here: \n" +
+                    message.Body = "<h1>Join whiteboard session here:</h1> " +
+                            "<h3>" +
                             URL +
-                            "\nConnect with pincode: " + board.Pin.ToString();
+                            "</h3>" +
+                            "Connect with pincode: <b>" + board.Pin.ToString() + "</b>";
                 }
                 else
                 {
-                    message.Body = "Join whiteboard session here: \n" +
-                        form.Link;
+                    message.Body = "<h1>Join whiteboard session here:</h1>" +
+                        "<h3>https://localhost:44313" + form.Link + "</h3>";
                 }
 
                 smtp.Send(message);
