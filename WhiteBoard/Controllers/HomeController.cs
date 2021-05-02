@@ -6,15 +6,15 @@ namespace WhiteBoard.Controllers
 {
     public class HomeController : Controller
     {
-        readonly IBoardService boardService;
+        readonly IBoardService _boardService;
         public HomeController(IBoardService boardService)
         {
-            this.boardService = boardService;
+            _boardService = boardService;
         }
 
         public IActionResult Index()
         {
-            ViewBag.boardId = boardService.GenerateBoardId();
+            ViewBag.boardId = _boardService.GenerateBoardId();
             return View();
         }
 

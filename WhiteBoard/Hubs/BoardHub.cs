@@ -12,12 +12,10 @@ namespace WhiteBoard.Hubs
     public class BoardHub : Hub
     {
         readonly private IBoardRepository _boardRepository;
-        readonly private IBoardService _boardService;
 
-        public BoardHub(IBoardRepository boardRepository, IBoardService board_boardService)
+        public BoardHub(IBoardRepository boardRepository)
         {
             _boardRepository = boardRepository;
-            _boardService = board_boardService;
         }
 
         /// <summary>
@@ -33,13 +31,13 @@ namespace WhiteBoard.Hubs
             string userId = ((IAnonymousIdFeature)Context.GetHttpContext().Features[typeof(IAnonymousIdFeature)]).AnonymousId;
             if ((board = _boardRepository.FindBoardById(groupName)) == null)
             {
-                board = _boardService.CreateBoard(groupName);
+                board = _boardRepository.CreateBoard(groupName);
                 _boardRepository.AddBoard(board);
                 boardExisted = false;
             }
             if ((user = _boardRepository.FindUserById(board, userId)) == null)
             {
-                user = _boardService.CreateUser(userId, Context.ConnectionId, board, boardExisted);
+                user = _boardRepository.CreateUser(userId, Context.ConnectionId, board, boardExisted);
                 _boardRepository.AddUser(board, user);
             }
             else
@@ -86,7 +84,7 @@ namespace WhiteBoard.Hubs
                     await Clients.Group(board.BoardId).SendAsync("removeUserFromList", user.UserId);
                 }
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, board.BoardId);
-                if (_boardService.isBoardEmpty(board))
+                if (_boardRepository.isBoardEmpty(board))
                 {
                     _boardRepository.RemoveBoard(board);
                 }

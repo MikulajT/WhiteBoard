@@ -1,15 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace WhiteBoard.Models
 {
     public class BoardRepository : IBoardRepository
     {
         private readonly IList<BoardModel> boards;
+        private readonly IBoardService _boardService;
 
-        public BoardRepository()
+        public BoardRepository(IBoardService boardService)
         {
             boards = new List<BoardModel>();
+            _boardService = boardService;
+        }
+
+        public BoardModel CreateBoard(string groupName)
+        {
+            BoardModel board = new BoardModel()
+            {
+                BoardId = groupName,
+                Name = "",
+                UniqueName = "",
+                Pin = _boardService.GenerateRoomPin(1000, 9999),
+                Users = new List<UserModel>()
+            };
+            return board;
         }
 
         /// <summary>
@@ -30,6 +46,21 @@ namespace WhiteBoard.Models
             }
 
             boards.Add(board);
+        }
+
+        public UserModel CreateUser(string userId, string userConnectionId, BoardModel board, bool boardExisted)
+        {
+            UserModel user = new UserModel()
+            {
+                UserId = userId,
+                Username = "Anonymous",
+                Role = boardExisted ? UserRole.Editor : UserRole.Creator,
+                Boards = new List<BoardModel>(),
+                UserConnectionIds = new List<string>()
+            };
+            user.Boards.Add(board);
+            user.UserConnectionIds.Add(userConnectionId);
+            return user;
         }
 
         public void AddUser(BoardModel board, UserModel user)
@@ -122,6 +153,11 @@ namespace WhiteBoard.Models
         public bool CompareBoardByPin(string boardId, int pin)
         {
             return pin == FindBoardById(boardId).Pin;
+        }
+
+        public bool isBoardEmpty(BoardModel board)
+        {
+            return board.Users.All(user => user.UserConnectionIds.Count == 0);
         }
     }
 }

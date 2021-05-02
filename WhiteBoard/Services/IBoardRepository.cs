@@ -2,7 +2,9 @@
 {
     public interface IBoardRepository
     {
+        BoardModel CreateBoard(string groupName);
         void AddBoard(BoardModel board);
+        UserModel CreateUser(string userId, string userConnectionId, BoardModel board, bool boardExisted);
         void AddUser(BoardModel board, UserModel user);
         BoardModel FindBoardById(string boardId);
         UserModel FindUserById(BoardModel board, string userId);
@@ -14,5 +16,6 @@
         void RemoveBoard(BoardModel board);
         void ChangeBoardname(string boardId, string changedBoardname);
         bool CompareBoardByPin(string boardId, int pin);
+        bool isBoardEmpty(BoardModel board);
     }
 }

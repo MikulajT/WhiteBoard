@@ -16,30 +16,30 @@ namespace WhiteBoard.Controllers
 {
     public class BoardController : Controller
     {
-        private IHubContext<BoardHub> HubContext { get; set; }
+        private IHubContext<BoardHub> _hubContext { get; set; }
         private readonly IWebHostEnvironment _hostEnvironment;
-        readonly IBoardRepository boardRepository;
+        readonly IBoardRepository _boardRepository;
 
         public BoardController(IHubContext<BoardHub> hubcontext,
                                IWebHostEnvironment environment,
                                IBoardRepository boardRepository)
         {
-            HubContext = hubcontext;
+            _hubContext = hubcontext;
             _hostEnvironment = environment;
-            this.boardRepository = boardRepository;
+            _boardRepository = boardRepository;
         }
 
         [Route("Board/{boardId}")]
         public IActionResult Board(string boardId)
-        {          
-            if(Request.Cookies["theme"] == null)
+        {
+            if (Request.Cookies["theme"] == null)
             {
                 CookieOptions cookies = new CookieOptions();
                 cookies.Expires = DateTime.Now.AddDays(1);
 
                 Response.Cookies.Append("theme", "true", cookies);
             }
-                    
+
             return View();
         }
 
@@ -69,7 +69,7 @@ namespace WhiteBoard.Controllers
                     file.CopyTo(fs);
                 }
                 string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
-                HubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
+                _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
                 string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
                 if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 10)
                 {
@@ -83,7 +83,7 @@ namespace WhiteBoard.Controllers
 
         public void SendEmail(EmailForm form)
         {
-            BoardModel board = boardRepository.FindBoardById(form.Link.Split('/').Last());
+            BoardModel board = _boardRepository.FindBoardById(form.Link.Split('/').Last());
             string URL = "https://localhost:44313/Access/" + board.UniqueName;
 
             using (var smtp = new SmtpClient("smtp.gmail.com", 587))
@@ -127,11 +127,11 @@ namespace WhiteBoard.Controllers
             if (ModelState.IsValid)
             {
                 int pin = int.Parse(form.p1.ToString() + form.p2.ToString() + form.p3.ToString() + form.p4.ToString());
-                BoardModel board = boardRepository.FindBoardByUniqueName(name);
+                BoardModel board = _boardRepository.FindBoardByUniqueName(name);
 
                 if (board != null)
                 {
-                    if (boardRepository.CompareBoardByPin(board.BoardId, pin))
+                    if (_boardRepository.CompareBoardByPin(board.BoardId, pin))
                     {
                         return Redirect(URL + board.BoardId);
                     }

@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 
 namespace WhiteBoard.Models
@@ -9,11 +7,10 @@ namespace WhiteBoard.Models
     public class BoardService : IBoardService
     {
         private const int BYTE_LENGTH = 16;
-        readonly private IBoardRepository repository;
 
-        public BoardService(IBoardRepository boardRepository)
+        public BoardService()
         {
-            repository = boardRepository;
+
         }
 
         /// <summary>
@@ -41,39 +38,6 @@ namespace WhiteBoard.Models
             string urlToken = WebEncoders.Base64UrlEncode(secureArray);
 
             return urlToken;
-        }
-
-        public BoardModel CreateBoard(string groupName)
-        {
-            BoardModel board = new BoardModel()
-            {
-                BoardId = groupName,
-                Name = "",
-                UniqueName = "",
-                Pin = GenerateRoomPin(1000, 9999),
-                Users = new List<UserModel>()
-            };
-            return board;
-        }
-
-        public UserModel CreateUser(string userId, string userConnectionId, BoardModel board, bool boardExisted)
-        {
-            UserModel user = new UserModel()
-            {
-                UserId = userId,
-                Username = "Anonymous",
-                Role = boardExisted ? UserRole.Editor : UserRole.Creator,
-                Boards = new List<BoardModel>(),
-                UserConnectionIds = new List<string>()
-            };
-            user.Boards.Add(board);
-            user.UserConnectionIds.Add(userConnectionId);
-            return user;
-        }
-
-        public bool isBoardEmpty(BoardModel board)
-        {
-            return board.Users.All(user => user.UserConnectionIds.Count == 0);
         }
 
         /// <summary>
