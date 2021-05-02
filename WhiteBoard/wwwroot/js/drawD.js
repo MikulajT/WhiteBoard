@@ -576,6 +576,7 @@ $("#imageUpload").change(function () {
  * Export tabule do formátu PNG
  */
 function exportToImage() {
+    canvas.backgroundColor = "black";
     let transform = canvas.viewportTransform.slice();
     canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
     let sel = new fabric.ActiveSelection(canvas.getObjects(), {
@@ -591,6 +592,7 @@ function exportToImage() {
         }), download: "Board"
     })[0].click();
     canvas.viewportTransform = transform;
+    canvas.backgroundColor = null;
 }
 
 /**
