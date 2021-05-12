@@ -44,6 +44,10 @@ let canvas = new fabric.Canvas("canvas", {
 });
 fabric.Object.prototype.lockScalingFlip = true;
 
+function pageRedirectWarning() {
+    return "";
+}
+
 /**
  * Notifikace o úspěšném odeslaní mailu
  */
