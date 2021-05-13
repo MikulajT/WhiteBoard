@@ -6,12 +6,13 @@ namespace WhiteBoard.Models
 {
     public class BoardRepository : IBoardRepository
     {
-        private readonly IList<BoardModel> boards;
+        private readonly IList<BoardModel> _boards;
         private readonly IBoardService _boardService;
+        private readonly object _objectLock = new object();
 
         public BoardRepository(IBoardService boardService)
         {
-            boards = new List<BoardModel>();
+            _boards = new List<BoardModel>();
             _boardService = boardService;
         }
 
@@ -34,18 +35,21 @@ namespace WhiteBoard.Models
         /// <param name="board"></param>
         public void AddBoard(BoardModel board)
         {
-            if (boards.Count == 0)
+            if (_boards.Count == 0)
             {
                 board.UniqueName = "Board0";
             }
             else
             {
-                int n = Int32.Parse(boards[(boards.Count - 1)].UniqueName.Split("Board")[1]);
+                int n = Int32.Parse(_boards[(_boards.Count - 1)].UniqueName.Split("Board")[1]);
                 n++;
                 board.UniqueName = "Board" + n.ToString();
             }
 
-            boards.Add(board);
+            lock (_objectLock)
+            {
+                _boards.Add(board);
+            }
         }
 
         public UserModel CreateUser(string userId, string userConnectionId, BoardModel board, bool boardExisted)
@@ -58,14 +62,20 @@ namespace WhiteBoard.Models
                 Boards = new List<BoardModel>(),
                 UserConnectionIds = new List<string>()
             };
-            user.Boards.Add(board);
-            user.UserConnectionIds.Add(userConnectionId);
+            lock (_objectLock)
+            {
+                user.Boards.Add(board);
+                user.UserConnectionIds.Add(userConnectionId);
+            }
             return user;
         }
 
         public void AddUser(BoardModel board, UserModel user)
         {
-            board.Users.Add(user);
+            lock (_objectLock)
+            {
+                board.Users.Add(user);
+            }
         }
 
         /// <summary>
@@ -75,7 +85,7 @@ namespace WhiteBoard.Models
         /// <returns></returns>
         public BoardModel FindBoardById(string boardId)
         {
-            return ((List<BoardModel>)boards).Find(x => x.BoardId == boardId);
+            return ((List<BoardModel>)_boards).Find(x => x.BoardId == boardId);
         }
 
         public UserModel FindUserById(BoardModel board, string userId)
@@ -110,17 +120,17 @@ namespace WhiteBoard.Models
         /// <returns></returns>
         public BoardModel FindBoardByName(string name)
         {
-            return ((List<BoardModel>)boards).Find(x => x.Name == name);
+            return ((List<BoardModel>)_boards).Find(x => x.Name == name);
         }
 
         public BoardModel FindBoardByUniqueName(string uname)
         {
-            return ((List<BoardModel>)boards).Find(x => x.UniqueName == uname);
+            return ((List<BoardModel>)_boards).Find(x => x.UniqueName == uname);
         }
 
         public BoardModel FindBoardByUserConnectionId(string userConnectionId)
         {
-            foreach (var board in boards)
+            foreach (var board in _boards)
             {
                 foreach (var user in board.Users)
                 {
@@ -136,7 +146,10 @@ namespace WhiteBoard.Models
 
         public void RemoveBoard(BoardModel board)
         {
-            boards.Remove(board);
+            lock (_objectLock)
+            {
+                _boards.Remove(board);
+            }
         }
 
         public void ChangeBoardname(string boardId, string changedBoardname)
