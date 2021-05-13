@@ -47,7 +47,6 @@
 
     .hr {
         margin-top: -15px;
-        padding: 5px;
         display: block;
     }
 
@@ -77,7 +76,7 @@
         display: grid;
         top: 73px;
         border: solid 2px #000000;
-        width: 50%;
+        width: 62%;
     }
 
     .tool-detail-menu {
