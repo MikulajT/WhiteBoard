@@ -180,9 +180,21 @@
                 <input id="object-font-picker" type="text" style="display: none;">
             </div>
         </div>
-        <button type="submit" class="bottomright" id="actionHistoryButton">
+        <button type="submit" id="action-history-button" onclick="showActionHistory()">
             <img src="~/resources/history.png">
         </button>
+
+        <!-- Action history -->
+        <div id="action-history" class="container rounded border border-dark">
+            <div>
+                <button type="button" id="close-button" class="close" aria-label="Close" onclick="hideActionHistory()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="grid-container" class="container rounded border">
+            </div>
+        </div>
+
         <canvas id="canvas" class="context-menu"></canvas>
     </div>
 

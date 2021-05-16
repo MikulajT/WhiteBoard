@@ -25,7 +25,7 @@ namespace WhiteBoard
             services.AddSignalR(o =>
             {
                 o.EnableDetailedErrors = true;
-                o.MaximumReceiveMessageSize = 131072; // bytes
+                o.MaximumReceiveMessageSize = null;
             });
             services.AddSingleton<Models.IBoardService, Models.BoardService>();
             services.AddSingleton<Models.IBoardRepository, Models.BoardRepository>();

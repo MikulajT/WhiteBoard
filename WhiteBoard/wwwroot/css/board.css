@@ -266,7 +266,7 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
-.bottomright {
+#action-history-button {
     background-color: white;
     z-index: 1;
     position: fixed;
@@ -274,4 +274,49 @@ input:checked + .slider:before {
     right: 0;
     margin: 10px;
     border-radius: 5px
+}
+
+#action-history {
+    display: none;
+    height: 500px;
+    width: 350px;
+    background-color: #FAFAFA;
+    z-index: 1;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    margin: 10px;
+    margin-bottom: 70px;
+}
+
+#grid-container {
+    height: 440px;
+    background-color: #FFFFFF;
+    overflow-y: scroll;
+}
+
+#close-button {
+    display: flex;
+    margin-left: auto;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding: 0;
+    outline: none !important;
+    box-shadow: none;
+}
+.row-divider {
+    margin: 5px;
+}
+
+.action-row:hover {
+    background-color: #FBFBFB;
+}
+
+
+.action-history-row {
+    overflow-wrap: break-word;
+}
+
+.action-history-restore {
+    padding: 0;
 }

@@ -168,5 +168,13 @@ namespace WhiteBoard.Hubs
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("moveObjectsStack", objectsId, frontOrBack);
         }
+
+        /// <summary>
+        /// Příkaz ke vložení vygenerovaného html kódu na stránku
+        /// </summary>
+        public async Task AppendHtmlCode(string actionType, string objectType, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("appendHtmlCode", actionType, objectType);
+        }
     }
 }
