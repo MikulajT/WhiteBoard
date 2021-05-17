@@ -200,6 +200,7 @@ function changeGlobalFont(fontValue) {
  */
 function changeObjectFont(fontValue) {
 	let activeObject = canvas.getActiveObjects()[0];
+	let textFont = activeObject.fontFamily;
 	let jsonData = {};
 	let undoEntry = {
 		action: "propertiesChanged",
@@ -214,7 +215,7 @@ function changeObjectFont(fontValue) {
 	connection.invoke("ModifyObjects", JSON.stringify(jsonData), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
-	actionHistoryAppend("font changed", "text");
+	actionHistoryAppend(`font changed from ${textFont} to ${activeObject.fontFamily}`, "text");
 }
 
 /*
@@ -681,9 +682,10 @@ canvas.on("text:editing:exited", function (e) {
 	if (editedObject.textHistory.length == 0) {
 		let undoEntry = { action: "added", objects: [{ id: editedObject.id }] };
 		undoStack.push(undoEntry);
-		actionHistoryAppend("inserted", "text");
+		actionHistoryAppend(`\'${editedObject.text}\' inserted`, "text");
 	}
-	if (editedObject.textHistory[editedObject.textHistory.length - 1] != editedObject.text) {
+	let previousText = editedObject.textHistory[editedObject.textHistory.length - 1];
+	if (previousText != editedObject.text) {
 		editedObject.textHistory.push(editedObject.text);
 		if (editedObject.textHistory.length > 1) {
 			let undoEntry = {
@@ -692,7 +694,7 @@ canvas.on("text:editing:exited", function (e) {
 					id: editedObject.id, properties: [{ text: editedObject.textHistory[editedObject.textHistory.length - 2] }] }]
 			};
 			undoStack.push(undoEntry);
-			actionHistoryAppend("text changed", "text");
+			actionHistoryAppend(`\'${previousText}\' edited to \'${editedObject.text}\'`, "text");
 		}
 	}
 });
@@ -1105,6 +1107,7 @@ function objectModified(e) {
 function deleteActiveObjects() {
 	let activeObjects = canvas.getActiveObjects();
 	let objectsId = [];
+	let removalId = generateGUID();
 	activeObjects.forEach(element => objectsId.push(element.id));
 	if (activeObjects.length > 0) {
 		let groupUndoEntries = [];
@@ -1113,12 +1116,12 @@ function deleteActiveObjects() {
 			groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(["id"])));
 			canvas.remove(activeObjects[i]);
 		}
-		undoStack.push({ action: "removed", objects: groupUndoEntries });
+		undoStack.push({ action: "removed", objects: groupUndoEntries, removalId: removalId});
 		connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
 			return console.error(err.toString());
 		});
 	}
-	actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"));
+	actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"), true, removalId);
 }
 
 /**
@@ -1574,7 +1577,7 @@ $("html").keyup(function (e) {
 /**
  * Vloží provedenou akci do historii akcí 
  */
-function actionHistoryAppend(actionType, objectType, sendMessage = true) {
+function actionHistoryAppend(actionType, objectType, sendMessage = true, removalId = "") {
 	let date = new Date();
 	let actionsGrid = document.getElementById("grid-container");
 	let row = document.createElement("div");
@@ -1591,10 +1594,12 @@ function actionHistoryAppend(actionType, objectType, sendMessage = true) {
 	objectType = objectType == "i-text" ? "text" : objectType;
 	actionType = getModificationPastTense(actionType);
 	actionMessage.appendChild(document.createTextNode(`${objectType} ${actionType} by ${$("#username").val()}`));
-	if (actionType == "removal") {
+	if (actionType == "removed" && sendMessage) {
 		let restoreButton = document.createElement("button");
 		restoreButton.setAttribute("type", "button");
 		restoreButton.setAttribute("class", "btn btn-link action-history-restore");
+		restoreButton.setAttribute("removalid", removalId);
+		restoreButton.setAttribute("onclick", "restoreDeletedObject(this)");
 		restoreButton.appendChild(document.createTextNode("Restore"));
 		row.appendChild(restoreButton);
 	}
@@ -1623,4 +1628,31 @@ function getModificationPastTense(modificationType) {
 	else {
 		return modificationType;
     }
+}
+
+/**
+ * Provede potřebné akce k obnovení odstraněného objektu
+ */
+function restoreDeletedObject(button) {
+	let clickedButton = button;
+	let row = clickedButton.parentElement;
+	let restored = document.createElement("p");
+	restored.setAttribute("class", "text-success");
+	restored.appendChild(document.createTextNode("Restored"));
+	row.replaceChild(restored, clickedButton);
+	restoreFromUndoStack(clickedButton.getAttribute("removalid"));
+}
+
+/**
+ * Nalezne akci odstranění v undo zásobníku a navrátí ji
+ */
+function restoreFromUndoStack(id) {
+	var undoEntry = undoStack.find(obj => {
+		return obj.removalId == id
+	});
+	var index = undoStack.indexOf(undoEntry);
+	if (index >= 0) {
+		undoStack.splice(index, 1);
+	}
+	undoRedoObjectsRemoval("undo", undoEntry.objects);
 }
