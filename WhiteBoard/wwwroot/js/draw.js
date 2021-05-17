@@ -1116,12 +1116,12 @@ function deleteActiveObjects() {
 			groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(["id"])));
 			canvas.remove(activeObjects[i]);
 		}
-		undoStack.push({ action: "removed", objects: groupUndoEntries, removalId: removalId});
+		undoStack.push({ action: "removed", objects: groupUndoEntries});
 		connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
 			return console.error(err.toString());
 		});
 	}
-	actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"), true, removalId);
+	actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"), true, objectsId);
 }
 
 /**
@@ -1352,12 +1352,12 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
 		groupEntries.push({ id: canvasObj.id });
 		jsonObjects.push(canvasObj.toJSON(["id"]));
 	}
-	if (undoOrRedo == "undo") {
-		redoStack.push({ action: "added", objects: groupEntries });
-	}
-	else {
-		undoStack.push({ action: "added", objects: groupEntries });
-	}
+		if (undoOrRedo == "undo") {
+			redoStack.push({ action: "added", objects: groupEntries });
+		}
+		else {
+			undoStack.push({ action: "added", objects: groupEntries });
+		}
 	connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
@@ -1577,7 +1577,7 @@ $("html").keyup(function (e) {
 /**
  * Vloží provedenou akci do historii akcí 
  */
-function actionHistoryAppend(actionType, objectType, sendMessage = true, removalId = "") {
+function actionHistoryAppend(actionType, objectType, sendMessage = true, objectsId = "") {
 	let date = new Date();
 	let actionsGrid = document.getElementById("grid-container");
 	let row = document.createElement("div");
@@ -1598,7 +1598,7 @@ function actionHistoryAppend(actionType, objectType, sendMessage = true, removal
 		let restoreButton = document.createElement("button");
 		restoreButton.setAttribute("type", "button");
 		restoreButton.setAttribute("class", "btn btn-link action-history-restore");
-		restoreButton.setAttribute("removalid", removalId);
+		restoreButton.setAttribute("objectsId", JSON.stringify(objectsId));
 		restoreButton.setAttribute("onclick", "restoreDeletedObject(this)");
 		restoreButton.appendChild(document.createTextNode("Restore"));
 		row.appendChild(restoreButton);
@@ -1637,22 +1637,58 @@ function restoreDeletedObject(button) {
 	let clickedButton = button;
 	let row = clickedButton.parentElement;
 	let restored = document.createElement("p");
-	restored.setAttribute("class", "text-success");
+	restored.setAttribute("class", "text-success action-history-restore");
 	restored.appendChild(document.createTextNode("Restored"));
 	row.replaceChild(restored, clickedButton);
-	restoreFromUndoStack(clickedButton.getAttribute("removalid"));
+	restoreAction(JSON.parse(clickedButton.getAttribute("objectsId")));
 }
 
 /**
  * Nalezne akci odstranění v undo zásobníku a navrátí ji
  */
-function restoreFromUndoStack(id) {
-	var undoEntry = undoStack.find(obj => {
-		return obj.removalId == id
-	});
-	var index = undoStack.indexOf(undoEntry);
-	if (index >= 0) {
-		undoStack.splice(index, 1);
+function restoreAction(ids) {
+	let addedObjEntries = findAddedObjectEntries(ids);
+	let removedObjEntry = findRemovedObjectsEntry(ids);
+	for (let addedObjEntry of addedObjEntries) {
+		undoStack.push(addedObjEntry);
+    }	
+	let jsonObjects = [];
+	for (let i = 0; i < removedObjEntry.objects.length; i++) {
+		fabric.util.enlivenObjects([JSON.parse(removedObjEntry.objects[i])], function (enlivenedObjects) {
+			canvas.add(enlivenedObjects[0].setCoords());
+			canvasObj = enlivenedObjects[0];
+		});
+		jsonObjects.push(canvasObj.toJSON(["id"]));
 	}
-	undoRedoObjectsRemoval("undo", undoEntry.objects);
+	connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
+		return console.error(err.toString());
+	});
+}
+
+/**
+ * Z undo zásobníku nalezne záznamy přidaných objektů
+ */
+function findAddedObjectEntries(ids) {
+	let addedObjects = [];
+	for (let undoEntry of undoStack.filter(obj => obj.action == "added")) {
+		for (let addedObj of undoEntry.objects) {
+			if (ids.includes(addedObj.id)) {
+				addedObjects.push(undoEntry);
+            }
+		}
+	}
+	return addedObjects;
+}
+
+/**
+ * Z undo zásobníku nalezne záznamy odstraněných objektů
+ */
+function findRemovedObjectsEntry(ids) {
+	for (let undoEntry of undoStack.filter(obj => obj.action == "removed")) {
+		for (let removedObj of undoEntry.objects) {
+			if (ids.includes(JSON.parse(removedObj).id)) {
+				return undoEntry;
+			}
+		}
+	}
 }

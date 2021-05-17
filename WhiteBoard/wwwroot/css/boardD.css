@@ -320,4 +320,5 @@ input:checked + .slider:before {
 
 .action-history-restore {
     padding: 0;
+    margin: 0;
 }
