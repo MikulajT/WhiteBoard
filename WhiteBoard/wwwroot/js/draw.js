@@ -1,8 +1,7 @@
 ﻿let connection = new signalR
 				.HubConnectionBuilder()
 				.withUrl("/drawDotHub")
-				//.withAutomaticReconnect()
-				.configureLogging(signalR.LogLevel.Debug)
+				.configureLogging(signalR.LogLevel.Information)
 				.build();
 
 let groupName;
@@ -586,8 +585,10 @@ $("#imageUpload").change(function () {
 			contentType: false, // Not to set any content header
 			processData: false, // Not to process data
 			data: fileData,
-			success: function () {
+			success: function (image) {
 				actionHistoryAppend("inserted", "image");
+				let undoEntry = { action: "added", objects: [{ id: image.id, extension: image.extension}] };
+				undoStack.push(undoEntry);
 			},
 			error: function (err) {
 				unsupportedFileType();
@@ -939,10 +940,13 @@ connection.on("modifyObjects", function (jsonData) {
 /**
  * Příkaz ze serveru k vložení obrázku z URL
  */
-connection.on("importImage", function (imageAddress, guid) {
-	fabric.Image.fromURL(imageAddress, function (myImg) {
-		myImg.id = guid;
-		canvas.add(myImg);
+connection.on("importImage", function (images) {
+	let uploadedImages = JSON.parse(images);
+	uploadedImages.forEach(function (image) {
+		fabric.Image.fromURL(image.address, function (myImg) {
+			myImg.id = image.id;
+			canvas.add(myImg);
+		});
 	});
 });
 
@@ -1107,13 +1111,18 @@ function objectModified(e) {
 function deleteActiveObjects() {
 	let activeObjects = canvas.getActiveObjects();
 	let objectsId = [];
-	let removalId = generateGUID();
 	activeObjects.forEach(element => objectsId.push(element.id));
 	if (activeObjects.length > 0) {
 		let groupUndoEntries = [];
 		canvas.discardActiveObject();
 		for (let i = 0; i < activeObjects.length; i++) {
-			groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(["id"])));
+			if (activeObjects[i].get("type") == "image") {
+				groupUndoEntries.push({
+					id: activeObjects[i].id, extension: "." + activeObjects[i]._element.src.split('.')[1] });
+			}
+			else {
+				groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(["id"])));
+            }
 			canvas.remove(activeObjects[i]);
 		}
 		undoStack.push({ action: "removed", objects: groupUndoEntries});
@@ -1321,7 +1330,12 @@ function undoRedoObjectsInsertion(undoOrRedo, stackObjects) {
 	let objectsId = [];
 	for (let i = 0; i < stackObjects.length; i++) {
 		let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
-		groupEntries.push(JSON.stringify(canvasObj.toJSON(["id"])));
+		if (canvasObj.get("type") == "image") {
+			groupEntries.push({ id: canvasObj.id, extension: stackObjects[i].extension });
+		}
+		else {
+			groupEntries.push(JSON.stringify(canvasObj.toJSON(["id"])));
+        }
 		canvas.remove(canvasObj);
 		objectsId.push(stackObjects[i].id);
 	}
@@ -1344,21 +1358,37 @@ function undoRedoObjectsInsertion(undoOrRedo, stackObjects) {
 function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
 	let groupEntries = [];
 	let jsonObjects = [];
+	let images = [];
 	for (let i = 0; i < stackObjects.length; i++) {
-		fabric.util.enlivenObjects([JSON.parse(stackObjects[i])], function (enlivenedObjects) {
-			canvas.add(enlivenedObjects[0].setCoords());
-			canvasObj = enlivenedObjects[0];
-		});
-		groupEntries.push({ id: canvasObj.id });
-		jsonObjects.push(canvasObj.toJSON(["id"]));
-	}
-		if (undoOrRedo == "undo") {
-			redoStack.push({ action: "added", objects: groupEntries });
+		if (stackObjects[i].extension) {
+			let imageAddress = window.location.origin + "/uploadedImages/" + stackObjects[i].id + stackObjects[i].extension;
+			fabric.Image.fromURL(imageAddress, function (myImg) {
+				myImg.id = stackObjects[i].id;
+				canvas.add(myImg);
+			});
+			groupEntries.push({ id: stackObjects[i].id, extension: stackObjects[i].extension });
+			images.push({ address: imageAddress, id: stackObjects[i].id});
 		}
 		else {
-			undoStack.push({ action: "added", objects: groupEntries });
-		}
+			fabric.util.enlivenObjects([JSON.parse(stackObjects[i])], function (enlivenedObjects) {
+				canvas.add(enlivenedObjects[0].setCoords());
+				canvasObj = enlivenedObjects[0];
+			});
+			groupEntries.push({ id: canvasObj.id });
+			jsonObjects.push(canvasObj.toJSON(["id"]));
+        }
+
+	}
+	if (undoOrRedo == "undo") {
+		redoStack.push({ action: "added", objects: groupEntries });
+	}
+	else {
+		undoStack.push({ action: "added", objects: groupEntries });
+	}
 	connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
+		return console.error(err.toString());
+	});
+	connection.invoke("ImportImage", JSON.stringify(images), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
 }
@@ -1417,15 +1447,14 @@ function undoRedoPropertiesChanged(undoOrRedo, stackObjects) {
 	let groupEntries = [];
 	let jsonData = {};
 	for (let i = 0; i < stackObjects.length; i++) {
-		let modifiedProperties = [];
 		let canvasObj = canvas.getObjects().find(obj => { return obj.id === stackObjects[i].id });
+		let modifiedProperties = [];
+		jsonData[canvasObj.id] = {};
 		for (let j = 0; j < stackObjects[i].properties.length; j++) {
 			let propertyType = Object.keys(stackObjects[i].properties[j])[0];
 			modifiedProperties.push({ [propertyType]: canvasObj[propertyType] });
 			canvasObj.set(propertyType, stackObjects[i].properties[j][propertyType]);
-			jsonData[canvasObj.id] = {
-			[propertyType]: canvasObj[propertyType]
-			};
+			jsonData[canvasObj.id][propertyType] = canvasObj[propertyType];
 		}
 		groupEntries.push({
 			id: canvasObj.id,

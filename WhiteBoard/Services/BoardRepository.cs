@@ -24,7 +24,8 @@ namespace WhiteBoard.Models
                 Name = "",
                 UniqueName = "",
                 Pin = _boardService.GenerateRoomPin(1000, 9999),
-                Users = new List<UserModel>()
+                Users = new List<UserModel>(),
+                ImageIds = new List<string>()
             };
             return board;
         }
@@ -168,9 +169,26 @@ namespace WhiteBoard.Models
             return pin == FindBoardById(boardId).Pin;
         }
 
+        /// <summary>
+        /// Zjistí, zda-li na tabuli není žádný uživatel
+        /// </summary>
+        /// <param name="board"></param>
+        /// <returns></returns>
         public bool isBoardEmpty(BoardModel board)
         {
             return board.Users.All(user => user.UserConnectionIds.Count == 0);
+        }
+
+        /// <summary>
+        /// Přidá id obrázku do kolekce
+        /// </summary>
+        /// <param name="imageId"></param>
+        public void AddImageId(string boardId, string imageId)
+        {
+            lock (_objectLock)
+            {
+                FindBoardById(boardId).ImageIds.Add(imageId);
+            }
         }
     }
 }

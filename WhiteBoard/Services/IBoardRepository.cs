@@ -17,5 +17,6 @@
         void ChangeBoardname(string boardId, string changedBoardname);
         bool CompareBoardByPin(string boardId, int pin);
         bool isBoardEmpty(BoardModel board);
+        void AddImageId(string boardId, string imageId);
     }
 }

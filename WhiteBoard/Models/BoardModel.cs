@@ -9,5 +9,6 @@ namespace WhiteBoard.Models
         public string UniqueName { get; set; }
         public int Pin { get; set; }
         public List<UserModel> Users { get; set; }
+        public List<string> ImageIds { get; set; }
     }
 }

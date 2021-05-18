@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
 using ReturnTrue.AspNetCore.Identity.Anonymous;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -12,10 +14,12 @@ namespace WhiteBoard.Hubs
     public class BoardHub : Hub
     {
         readonly private IBoardRepository _boardRepository;
+        private readonly IWebHostEnvironment _hostEnvironment;
 
-        public BoardHub(IBoardRepository boardRepository)
+        public BoardHub(IBoardRepository boardRepository, IWebHostEnvironment environment)
         {
             _boardRepository = boardRepository;
+            _hostEnvironment = environment;
         }
 
         /// <summary>
@@ -86,6 +90,16 @@ namespace WhiteBoard.Hubs
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, board.BoardId);
                 if (_boardRepository.isBoardEmpty(board))
                 {
+                    //odstran vsechny obrazky na zanikle tabuli
+                    string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
+                    FileSystemInfo[] fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos();
+                    foreach (FileSystemInfo myFile in fileInfo)
+                    {
+                        if (board.ImageIds.Contains(myFile.Name))
+                        {
+                            File.Delete(myFile.FullName);
+                        }
+                    }
                     _boardRepository.RemoveBoard(board);
                 }
             }
@@ -175,6 +189,14 @@ namespace WhiteBoard.Hubs
         public async Task AppendHtmlCode(string actionType, string objectType, string groupName)
         {
             await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("appendHtmlCode", actionType, objectType);
+        }
+
+        /// <summary>
+        /// Příkaz k vložení obrázků na canvas
+        /// </summary>
+        public async Task ImportImage(string images, string groupName)
+        {
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("importImage", images);
         }
     }
 }

@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Mail;
+using System.Text.Json;
 using WhiteBoard.Hubs;
 using WhiteBoard.Models;
 
@@ -61,22 +63,22 @@ namespace WhiteBoard.Controllers
                 var file = HttpContext.Request.Form.Files[0];
                 string fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
                 string myUniqueFileName = Convert.ToString(Guid.NewGuid());
-                string FileExtension = Path.GetExtension(fileName);
-                string newFileName = myUniqueFileName + FileExtension;
+                string fileExtension = Path.GetExtension(fileName);
+                string newFileName = myUniqueFileName + fileExtension;
                 fileName = @"wwwroot\uploadedImages\" + $"{newFileName}";
                 using (FileStream fs = System.IO.File.Create(fileName))
                 {
                     file.CopyTo(fs);
                 }
+
+                //metoda na straně klienta akceptuje na vstupu kolekce, proto musíme vytvořit 2 kolekce s jedním prvkem
                 string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
-                _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage", imagePath, Guid.NewGuid().ToString());
-                string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
-                if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 10)
-                {
-                    FileSystemInfo fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos().OrderBy(fi => fi.CreationTime).First();
-                    System.IO.File.Delete(fileInfo.FullName);
-                }
-                return Ok();
+                List<string> imageIds = new List<string> { "myUniqueFileName" };
+
+                _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage",
+                    JsonSerializer.Serialize(new[] { new { address = imagePath, id = myUniqueFileName } }));
+                _boardRepository.AddImageId(Request.Form["group"], newFileName);
+                return Ok(new { id = myUniqueFileName, extension = fileExtension });
             }
             return BadRequest();
         }
