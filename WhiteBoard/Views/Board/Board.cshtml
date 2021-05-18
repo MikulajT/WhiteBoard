@@ -7,22 +7,25 @@
 }
 @model WhiteBoard.Models.EmailForm
 
-@{
-    var theme = httpContextAccessor.HttpContext.Request.Cookies["theme"];
-
-    if (theme == "true")
-    {
-        <link rel="stylesheet" type="text/css" href="~/css/board.css">
-    }
-    else
-    {
-        <link rel="stylesheet" type="text/css" href="~/css/boardD.css">
-    }
-}
-
+<link rel="stylesheet" type="text/css" href="~/css/board.css">
 <link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
 <link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
 <link rel="stylesheet" type="text/css" href="~/css/jquery.fontselect.css">
+@{
+    var theme = httpContextAccessor.HttpContext.Request.Cookies["theme"];
+
+    if (theme == "false")
+    {
+        <style>
+            #canvas {
+                background-image: linear-gradient(#464646 2px, transparent 0.1em), linear-gradient( 90deg, #464646 2px, transparent .1em) !important;
+                background-size: 30px 30px !important;
+                background-color: #3c3c3c !important;
+            }
+        </style>
+    }
+}
+
 <body onbeforeunload="return pageRedirectWarning()">
     <div>
         <nav class="navbar navbar-expand navbar-light bg-white">
@@ -112,16 +115,9 @@
                     <img src="~/resources/text.png">
                 </button>
                 <div class="divider"></div>
-                @{
-                    if (theme == "true")
-                    {
-                        <input id="global-color-picker" type="color" value="#000000" />
-                    }
-                    else
-                    {
-                        <input id="global-color-picker" type="color" value="#fffffe" />
-                    }
-                }
+
+                <input id="global-color-picker" type="color" value="#000000" />
+
                 <div class="divider" id="visible"></div>
                 <div class="hr"><hr></div>
 
@@ -344,18 +340,6 @@
     <script defer src="~/js/spectrum.js"></script>
     <script defer src="~/js/jquery.fontselect.js"></script>
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
-    @{
-        if (theme == "false")
-        {
-            <script defer src="~/js/drawD.js">
-                $("#global-color-picker").spectrum("set", "#fffffe");
-            </script>
+    <script defer src="~/js/draw.js"></script>
 
-        }
-        else
-        {
-            <script defer src="~/js/draw.js">
-            </script>
-        }
-    }
 </body>

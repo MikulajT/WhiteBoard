@@ -151,7 +151,7 @@ div {
 
 #canvas {
     background-image: linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em);
-    background-size: 15px 15px;
+    background-size: 30px 30px;
 }
 
 .button:focus {
