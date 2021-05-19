@@ -164,6 +164,7 @@ $.contextMenu({
 /*
  * Inicializace font pickeru
  */
+
 $('#global-font-picker').fontselect({
 	placeholder: 'Select a font',
 	placeholderSearch: 'Search...',
@@ -929,10 +930,12 @@ connection.on("modifyObjects", function (jsonData) {
 	let modifiedObjects = JSON.parse(jsonData);
 	for (objectId in modifiedObjects) {
 		let canvasObj = canvas.getObjects().find(obj => { return obj.id === objectId });
-		for (objectProperty in modifiedObjects[objectId]) {
-			canvasObj.set(objectProperty, modifiedObjects[objectId][objectProperty]);
-		}
-		canvasObj.setCoords();
+		if (canvasObj) {
+			for (objectProperty in modifiedObjects[objectId]) {
+				canvasObj.set(objectProperty, modifiedObjects[objectId][objectProperty]);
+			}
+			canvasObj.setCoords();
+        }
 	}
 	canvas.requestRenderAll();
 });
@@ -940,7 +943,7 @@ connection.on("modifyObjects", function (jsonData) {
 /**
  * Příkaz ze serveru k vložení obrázku z URL
  */
-connection.on("importImage", function (images) {
+connection.on("importImages", function (images) {
 	let uploadedImages = JSON.parse(images);
 	uploadedImages.forEach(function (image) {
 		fabric.Image.fromURL(image.address, function (myImg) {
@@ -1121,7 +1124,7 @@ function deleteActiveObjects() {
 					id: activeObjects[i].id, extension: "." + activeObjects[i]._element.src.split('.')[1] });
 			}
 			else {
-				groupUndoEntries.push(JSON.stringify(activeObjects[i].toJSON(["id"])));
+				groupUndoEntries.push({ id: activeObjects[i].id, canvasObj: JSON.stringify(activeObjects[i].toJSON(["id"]))});
             }
 			canvas.remove(activeObjects[i]);
 		}
@@ -1334,7 +1337,7 @@ function undoRedoObjectsInsertion(undoOrRedo, stackObjects) {
 			groupEntries.push({ id: canvasObj.id, extension: stackObjects[i].extension });
 		}
 		else {
-			groupEntries.push(JSON.stringify(canvasObj.toJSON(["id"])));
+			groupEntries.push({ id: canvasObj.id, canvasObj: JSON.stringify(canvasObj.toJSON(["id"])) });
         }
 		canvas.remove(canvasObj);
 		objectsId.push(stackObjects[i].id);
@@ -1370,7 +1373,7 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
 			images.push({ address: imageAddress, id: stackObjects[i].id});
 		}
 		else {
-			fabric.util.enlivenObjects([JSON.parse(stackObjects[i])], function (enlivenedObjects) {
+			fabric.util.enlivenObjects([JSON.parse(stackObjects[i].canvasObj)], function (enlivenedObjects) {
 				canvas.add(enlivenedObjects[0].setCoords());
 				canvasObj = enlivenedObjects[0];
 			});
@@ -1388,7 +1391,7 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
 	connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
-	connection.invoke("ImportImage", JSON.stringify(images), groupName).catch(function (err) {
+	connection.invoke("ImportImages", JSON.stringify(images), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
 }
@@ -1676,20 +1679,38 @@ function restoreDeletedObject(button) {
  * Nalezne akci odstranění v undo zásobníku a navrátí ji
  */
 function restoreAction(ids) {
-	let addedObjEntries = findAddedObjectEntries(ids);
+	let addedObjEntries = findAddedObjectEntries(ids);	
 	let removedObjEntry = findRemovedObjectsEntry(ids);
-	for (let addedObjEntry of addedObjEntries) {
-		undoStack.push(addedObjEntry);
-    }	
+	let addedObjEntry = {action: "added", objects: []};
+	for (let entries of addedObjEntries) {
+		for (let object of entries.objects) {
+			addedObjEntry.objects.push(object);
+        }
+	}	
+	undoStack.push(addedObjEntry);
 	let jsonObjects = [];
+	let images = [];
 	for (let i = 0; i < removedObjEntry.objects.length; i++) {
-		fabric.util.enlivenObjects([JSON.parse(removedObjEntry.objects[i])], function (enlivenedObjects) {
-			canvas.add(enlivenedObjects[0].setCoords());
-			canvasObj = enlivenedObjects[0];
-		});
-		jsonObjects.push(canvasObj.toJSON(["id"]));
+		if (removedObjEntry.objects[i].extension) {
+			let imageAddress = window.location.origin + "/uploadedImages/" + removedObjEntry.objects[i].id + removedObjEntry.objects[i].extension;
+			fabric.Image.fromURL(imageAddress, function (myImg) {
+				myImg.id = removedObjEntry.objects[i].id;
+				canvas.add(myImg);
+			});
+			images.push({ address: imageAddress, id: removedObjEntry.objects[i].id });
+		}
+		else {
+			fabric.util.enlivenObjects([JSON.parse(removedObjEntry.objects[i].canvasObj)], function (enlivenedObjects) {
+				canvas.add(enlivenedObjects[0].setCoords());
+				canvasObj = enlivenedObjects[0];
+			});
+			jsonObjects.push(canvasObj.toJSON(["id"]));
+        }
 	}
 	connection.invoke("AddObjects", JSON.stringify(jsonObjects), groupName).catch(function (err) {
+		return console.error(err.toString());
+	});
+	connection.invoke("ImportImages", JSON.stringify(images), groupName).catch(function (err) {
 		return console.error(err.toString());
 	});
 }
@@ -1715,7 +1736,7 @@ function findAddedObjectEntries(ids) {
 function findRemovedObjectsEntry(ids) {
 	for (let undoEntry of undoStack.filter(obj => obj.action == "removed")) {
 		for (let removedObj of undoEntry.objects) {
-			if (ids.includes(JSON.parse(removedObj).id)) {
+			if (ids.includes(removedObj.id)) {
 				return undoEntry;
 			}
 		}

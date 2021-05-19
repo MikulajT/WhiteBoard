@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -71,11 +70,9 @@ namespace WhiteBoard.Controllers
                     file.CopyTo(fs);
                 }
 
-                //metoda na straně klienta akceptuje na vstupu kolekce, proto musíme vytvořit 2 kolekce s jedním prvkem
+                //metoda na straně klienta akceptuje na vstupu kolekci, proto musíme vytvořit kolekci s jedním prvkem
                 string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
-                List<string> imageIds = new List<string> { "myUniqueFileName" };
-
-                _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImage",
+                _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImages",
                     JsonSerializer.Serialize(new[] { new { address = imagePath, id = myUniqueFileName } }));
                 _boardRepository.AddImageId(Request.Form["group"], newFileName);
                 return Ok(new { id = myUniqueFileName, extension = fileExtension });

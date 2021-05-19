@@ -194,9 +194,9 @@ namespace WhiteBoard.Hubs
         /// <summary>
         /// Příkaz k vložení obrázků na canvas
         /// </summary>
-        public async Task ImportImage(string images, string groupName)
+        public async Task ImportImages(string images, string groupName)
         {
-            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("importImage", images);
+            await Clients.GroupExcept(groupName, Context.ConnectionId).SendAsync("importImages", images);
         }
     }
 }
