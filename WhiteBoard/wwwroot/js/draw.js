@@ -90,6 +90,8 @@ function changeBoardname(boardName) {
 fabric.Image.prototype.toObject = (function (toObject) {
 	return function () {
 		return fabric.util.object.extend(toObject.call(this), {
+			id: this.id,
+			extension: this.extension,
 			src: this.toDataURL()
 		});
 	};
@@ -627,7 +629,7 @@ function exportToImage() {
  * Ulozeni canvasu jako projektu
  */
 function saveProject(el) {
-	let data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id'])));
+	let data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id', 'extension'])));
 	el.setAttribute("href", "data:" + data);
 	el.setAttribute("download", "Board.json");
 }
@@ -948,6 +950,7 @@ connection.on("importImages", function (images) {
 	uploadedImages.forEach(function (image) {
 		fabric.Image.fromURL(image.address, function (myImg) {
 			myImg.id = image.id;
+			myImg.extension = image.extension;
 			canvas.add(myImg);
 		});
 	});
@@ -986,7 +989,7 @@ connection.on("appendHtmlCode", function (actionType, objectType) {
  * Požadavek na server k vyčíštění canvasu všech uživatelů
  */
 function tellServerToClear() {
-	let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id'])) };
+	let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id', 'extension'])) };
 	undoStack.push(undoEntry);
 	canvas.clear();
 	connection.invoke("ClearCanvas", groupName).catch(function (err) {
@@ -1121,7 +1124,7 @@ function deleteActiveObjects() {
 		for (let i = 0; i < activeObjects.length; i++) {
 			if (activeObjects[i].get("type") == "image") {
 				groupUndoEntries.push({
-					id: activeObjects[i].id, extension: "." + activeObjects[i]._element.src.split('.')[1] });
+					id: activeObjects[i].id, extension: activeObjects[i].extension });
 			}
 			else {
 				groupUndoEntries.push({ id: activeObjects[i].id, canvasObj: JSON.stringify(activeObjects[i].toJSON(["id"]))});
@@ -1489,7 +1492,7 @@ function undoRedoCanvasClear(undoOrRedo, jsonCanvas) {
 		});
 	}
 	else {
-		let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id'])) };
+		let undoEntry = { action: "canvasCleared", canvas: JSON.stringify(canvas.toDatalessJSON(['id', 'extension'])) };
 		undoStack.push(undoEntry);
 		canvas.clear();
 		connection.invoke("ClearCanvas", groupName).catch(function (err) {

@@ -73,7 +73,7 @@ namespace WhiteBoard.Controllers
                 //metoda na straně klienta akceptuje na vstupu kolekci, proto musíme vytvořit kolekci s jedním prvkem
                 string imagePath = $"{Request.Scheme}://{Request.Host}/uploadedImages/{newFileName}";
                 _hubContext.Clients.Group(Request.Form["group"]).SendAsync("importImages",
-                    JsonSerializer.Serialize(new[] { new { address = imagePath, id = myUniqueFileName } }));
+                    JsonSerializer.Serialize(new[] { new { address = imagePath, id = myUniqueFileName, extension = fileExtension } }));
                 _boardRepository.AddImageId(Request.Form["group"], newFileName);
                 return Ok(new { id = myUniqueFileName, extension = fileExtension });
             }
