@@ -42,6 +42,7 @@ let canvas = new fabric.Canvas("canvas", {
 	height: window.screen.height
 });
 fabric.Object.prototype.lockScalingFlip = true;
+SetCanvasTheme();
 
 function pageRedirectWarning() {
 	return "";
@@ -603,6 +604,40 @@ $("#imageUpload").change(function () {
 		unsupportedFileType();
 	}
 });
+
+/**
+ * Požadavek na server k nastavení cookie pozadí tabule 
+ */
+function themeChange() {
+	let blackTheme = document.getElementById("theme").checked;
+	$.ajax({
+		url: "/Board/SetTheme",
+		type: "POST",
+		data: { "blackTheme": blackTheme},
+		success: function () {
+			SetCanvasTheme();
+		}
+	});
+}
+
+
+/**
+ * Změna pozadí tabule
+ */
+function SetCanvasTheme() {
+	let blackTheme = document.getElementById("theme").checked;
+	if (blackTheme) {
+		document.getElementById("canvas").style.backgroundImage = "linear-gradient(#464646 2px, transparent 0.1em), linear-gradient( 90deg, #464646 2px, transparent .1em)";
+		document.getElementById("canvas").style.backgroundSize = "30px 30px";
+		document.getElementById("canvas").style.backgroundColor = "#3c3c3c";
+	}
+	else {
+		document.getElementById("canvas").style.backgroundImage = "linear-gradient(#c4effd 0.2px, transparent 0.1em), linear-gradient(90deg, #c4effd 0.2px, transparent .1em)";
+		document.getElementById("canvas").style.backgroundSize = "30px 30px";
+		document.getElementById("canvas").style.backgroundColor = "#ffffff";
+	}
+}
+
 
 /**
  * Export tabule do formátu PNG

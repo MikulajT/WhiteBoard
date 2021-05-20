@@ -3,16 +3,13 @@
     ViewData["Title"] = "Home Page";
 }
 @model WhiteBoard.Models.PinForm
-<link rel="stylesheet" type="text/css" href="~/css/spectrum.css">
-<link rel="stylesheet" type="text/css" href="~/css/contextMenu.css">
-<link rel="stylesheet" type="text/css" href="~/css/jquery.fontselect.css">
 <link rel="stylesheet" type="text/css" href="~/css/board.css">
 
 <div>
-    <canvas id="canvas" class="context-menu"></canvas>
+    <canvas id="canvas"></canvas>
 </div>
-<!-- Modal window - copy link-->
-<div class="modal fade show" id="pin" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<!-- Modal window - create board -->
+<div class="modal fade show" id="createBoard" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -22,7 +19,7 @@
             </div>
             <div class="modal-body">
                 <div>
-                    <button type="button" class="btn btn-primary" onclick=location.href="@Url.Action("Board", "Board", new { boardId = ViewBag.boardId })" >+ New Board</button>
+                    <button type="button" class="btn btn-primary" onclick=location.href="@Url.Action("Board", "Board", new { boardId = ViewBag.boardId })">+ New Board</button>
                 </div>
             </div>
         </div>
@@ -30,16 +27,18 @@
 </div>
 <input id="Link" name="Link" type="hidden" />
 
-
 <script src="~/lib/jquery/dist/jquery.js"></script>
-<script src="~/lib/microsoft-signalr/signalr.js"></script>
 <script src="~/lib/fabricjs/fabric.min.js"></script>
-<script defer src="~/js/jquery.contextMenu.js"></script>
-<script defer src="~/js/jquery.ui.position.min.js"></script>
-<script defer src="~/js/spectrum.js"></script>
-<script defer src="~/js/jquery.fontselect.js"></script>
-<script defer src="~/js/draw.js"></script>
-<script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
+<script>
+    let canvas = new fabric.Canvas("canvas", {
+        isDrawingMode: false,
+        width: window.screen.width,
+        height: window.screen.height
+    });
+    $(document).ready(function () {
+        $("#createBoard").modal("show");
+    });
+</script>
 
 
 

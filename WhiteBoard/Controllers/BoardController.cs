@@ -149,21 +149,17 @@ namespace WhiteBoard.Controllers
             }
             else
             {
-                TempData["error"] = "Wrong fromat.";
+                TempData["error"] = "Wrong format.";
             }
             return RedirectToAction("Access", new { boardUName = name });
         }
 
-
-        [HttpPost]
-        public IActionResult SetTheme(EmailForm form)
+        public IActionResult SetTheme(bool blackTheme)
         {
             CookieOptions cookies = new CookieOptions();
             cookies.Expires = DateTime.Now.AddDays(1);
-
-            Response.Cookies.Append("theme", form.Theme.ToString().ToLower(), cookies);
-
-            return RedirectToAction("Board", new { boardId = form.Link.Split('/').Last() });
+            Response.Cookies.Append("theme", blackTheme.ToString().ToLower(), cookies);
+            return Ok();
         }
     }
 }
