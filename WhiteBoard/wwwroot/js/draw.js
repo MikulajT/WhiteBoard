@@ -965,6 +965,11 @@ connection.on("deleteObjects", function (objectsId) {
  */
 connection.on("modifyObjects", function (jsonData) {
 	let modifiedObjects = JSON.parse(jsonData);
+	let modifiedObjectsIds = Object.keys(modifiedObjects);
+	let selection = canvas.getActiveObjects().map(obj => obj.id);
+	if (modifiedObjectsIds.some(obj => selection.includes(obj))) {
+		canvas.discardActiveObject();
+    }
 	for (objectId in modifiedObjects) {
 		let canvasObj = canvas.getObjects().find(obj => { return obj.id === objectId });
 		if (canvasObj) {
