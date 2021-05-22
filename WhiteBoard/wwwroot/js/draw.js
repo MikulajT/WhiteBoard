@@ -643,6 +643,7 @@ function SetCanvasTheme() {
  * Export tabule do formátu PNG
  */
 function exportToImage() {
+	let boardName = document.getElementById('boardName').value;
 	let transform = canvas.viewportTransform.slice();
 	canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
 	let sel = new fabric.ActiveSelection(canvas.getObjects(), {
@@ -655,7 +656,7 @@ function exportToImage() {
 			height: sel.height + Math.abs(sel.top),
 			left: sel.left < 0 ? sel.left : null,
 			top: sel.top < 0 ? sel.left : null,
-		}), download: "Board"
+		}), download: boardName ? boardName : "Board"
 	})[0].click();
 	canvas.viewportTransform = transform;
 }
@@ -664,9 +665,10 @@ function exportToImage() {
  * Ulozeni canvasu jako projektu
  */
 function saveProject(el) {
+	let boardName = document.getElementById('boardName').value;
 	let data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(canvas.toDatalessJSON(['id', 'extension'])));
 	el.setAttribute("href", "data:" + data);
-	el.setAttribute("download", "Board.json");
+	el.setAttribute("download", (boardName ? boardName : "Board") + ".json");
 }
 
 /**
@@ -1175,8 +1177,8 @@ function deleteActiveObjects() {
 		connection.invoke("DeleteObjects", JSON.stringify(objectsId), groupName).catch(function (err) {
 			return console.error(err.toString());
 		});
+		actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"), true, objectsId);
 	}
-	actionHistoryAppend("removed", activeObjects.length > 1 ? "group" : activeObjects[0].get("type"), true, objectsId);
 }
 
 /**
