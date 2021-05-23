@@ -92,13 +92,10 @@ namespace WhiteBoard.Hubs
                 {
                     //odstran vsechny obrazky na zanikle tabuli
                     string wwwrootAbsolutePath = _hostEnvironment.WebRootPath + "\\uploadedImages";
-                    FileSystemInfo[] fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos();
-                    foreach (FileSystemInfo myFile in fileInfo)
+                    if (Directory.GetFiles(wwwrootAbsolutePath).Length >= 30)
                     {
-                        if (board.ImageIds.Contains(myFile.Name))
-                        {
-                            File.Delete(myFile.FullName);
-                        }
+                        FileSystemInfo fileInfo = new DirectoryInfo(wwwrootAbsolutePath).GetFileSystemInfos().OrderBy(fi => fi.CreationTime).First();
+                        File.Delete(fileInfo.FullName);
                     }
                     _boardRepository.RemoveBoard(board);
                 }

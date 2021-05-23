@@ -960,6 +960,24 @@ connection.on("deleteObjects", function (objectsId) {
 			canvas.remove(objects[i]);
 		}
 	}
+	for (let i = undoStack.length - 1; i > -1; i--) {
+		if (undoStack[i].objects) {
+			for (const obj of undoStack[i].objects) {
+				if (removedObjects.includes(obj.id)) {
+					undoStack.splice(i, 1);
+				}
+			}
+        }
+	}
+	for (let i = redoStack.length - 1; i > -1; i--) {
+		if (redoStack[i].objects) {
+			for (const obj of redoStack[i].objects) {
+				if (removedObjects.includes(obj.id)) {
+					redoStack.splice(i, 1);
+				}
+			}
+		}
+	}
 });
 
 /**
@@ -1412,6 +1430,7 @@ function undoRedoObjectsRemoval(undoOrRedo, stackObjects) {
 			let imageAddress = window.location.origin + "/uploadedImages/" + stackObjects[i].id + stackObjects[i].extension;
 			fabric.Image.fromURL(imageAddress, function (myImg) {
 				myImg.id = stackObjects[i].id;
+				myImg.extension = stackObjects[i].extension;
 				canvas.add(myImg);
 			});
 			groupEntries.push({ id: stackObjects[i].id, extension: stackObjects[i].extension });
