@@ -55,7 +55,19 @@
 <script defer src="~/js/jquery.ui.position.min.js"></script>
 <script defer src="~/js/spectrum.js"></script>
 <script defer src="~/js/jquery.fontselect.js"></script>
-<script defer src="~/js/draw.js"></script>
 <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
+
+<script>
+    let canvas = new fabric.Canvas("canvas", {
+        isDrawingMode: false,
+        width: window.screen.width,
+        height: window.screen.height
+    });
+    $(document).ready(function () {
+        $('#pin').modal({ backdrop: 'static', keyboard: false })
+        $("#pin").modal("show");
+    });
+    document.getElementById("Link").value = window.location.href;
+</script>
 
 

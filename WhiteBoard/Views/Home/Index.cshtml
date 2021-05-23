@@ -34,8 +34,9 @@
         isDrawingMode: false,
         width: window.screen.width,
         height: window.screen.height
-    });
+    });    
     $(document).ready(function () {
+        $('#createBoard').modal({ backdrop: 'static', keyboard: false })
         $("#createBoard").modal("show");
     });
 </script>

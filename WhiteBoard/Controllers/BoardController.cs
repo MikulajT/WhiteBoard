@@ -81,9 +81,9 @@ namespace WhiteBoard.Controllers
         }
 
         public void SendEmail(EmailForm form)
-        {
+        {            
             BoardModel board = _boardRepository.FindBoardById(form.Link.Split('/').Last());
-            string URL = "http://vsbwhiteboard.aspifyhost.cz/Access/" + board.UniqueName;
+            string URL = form.Link.Split("Board")[0] + "Access/" + board.UniqueName;
 
             using (var smtp = new SmtpClient("smtp.gmail.com", 587))
             {
@@ -108,8 +108,8 @@ namespace WhiteBoard.Controllers
                 }
                 else
                 {
-                    message.Body = "<h1>Join whiteboard session here:</h1>" +
-                        "<h3>http://vsbwhiteboard.aspifyhost.cz" + form.Link + "</h3>";
+                    message.Body = "<h1>Join whiteboard session here:</h1>" +                      
+                        "<h3>" + form.Link + "</h3>";
                 }
 
                 smtp.Send(message);
@@ -123,7 +123,7 @@ namespace WhiteBoard.Controllers
 
         public IActionResult VerifyPin(PinForm form)
         {
-            string URL = "http://vsbwhiteboard.aspifyhost.cz/Board/";
+            string URL = form.Link.Split("Access")[0] + "Board/";
             string name = form.Link.Split('/').Last();
 
             if (ModelState.IsValid)

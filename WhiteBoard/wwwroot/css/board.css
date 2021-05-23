@@ -37,6 +37,10 @@
         border-radius: 5px;
         background-color: white;
     }
+    .button img {
+        width: 30px;
+        height: 30px;
+    }
 
     #drawing-color {
         margin: 5px;
@@ -93,7 +97,10 @@
         border-radius: 5px;
         background-color: white;
     }
-
+    .button img {
+        width: 35px;
+        height: 35px;
+    }
     #drawing-color {
         display: inline-grid;
         width: 35px;
@@ -156,11 +163,6 @@ div {
 
 .button:focus {
     outline: none;
-}
-
-.button img {
-    width: 35px;
-    height: 35px;
 }
 
 .dropdown-menu {
