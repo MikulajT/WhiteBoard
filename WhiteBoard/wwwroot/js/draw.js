@@ -913,6 +913,8 @@ connection.on("changeUsername", function (userName, userId) {
  */
 connection.on("clearCanvas", function () {
 	canvas.clear();
+	undoStack = [];
+	redoStack = [];
 });
 
 /**
